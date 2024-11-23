@@ -1,0 +1,89 @@
+package conversion
+
+import (
+	"log/slog"
+
+	"github.com/arisu-archive/arona-unflatd/cmd/unflatd/internal/utils"
+	"github.com/arisu-archive/arona-unflatd/pkg/fbs"
+	"github.com/arisu-archive/arona-unflatd/pkg/parser/ast"
+)
+
+type SchemaConverter struct {
+	logger *slog.Logger
+}
+
+func NewSchemaConverter(logger *slog.Logger) *SchemaConverter {
+	return &SchemaConverter{logger: logger}
+}
+
+func (sc *SchemaConverter) Convert(info *ast.FileInfo) (*fbs.Schema, error) {
+	schema := &fbs.Schema{
+		Namespace: info.Namespace,
+	}
+
+	sc.processStructs(info, schema)
+	sc.processEnums(info, schema)
+	return schema, nil
+}
+
+func (sc *SchemaConverter) processStructs(info *ast.FileInfo, schema *fbs.Schema) {
+	for _, structInfo := range info.Structs {
+		table := sc.createTable(structInfo)
+		if structInfo.HasMethod("Finish" + structInfo.Name + "Buffer") {
+			schema.RootTypes = append(schema.RootTypes, structInfo.Name)
+		}
+		schema.Tables = append(schema.Tables, table)
+	}
+}
+
+func (sc *SchemaConverter) createTable(structInfo *ast.StructInfo) fbs.Table {
+	table := fbs.Table{
+		Name: structInfo.Name,
+	}
+
+	for _, fieldData := range structInfo.Fields {
+		// We need to filter out the fields that are not public and are overridden by properties
+		if !utils.Contains(fieldData.Modifiers, []string{"public", "static"}) {
+			continue
+		}
+		if utils.Contains(fieldData.Modifiers, []string{"override"}) {
+			continue
+		}
+		sc.logger.Debug("Field", "name", fieldData.Name, "type", fieldData.Type)
+		field := sc.createField(structInfo, fieldData.Name, fieldData.Type)
+		table.Fields = append(table.Fields, field)
+	}
+	return table
+}
+
+func (sc *SchemaConverter) createField(structInfo *ast.StructInfo, fieldName, fieldType string) fbs.Field {
+	if structInfo.IsVector(fieldName, fieldType) {
+		vectorFieldName := structInfo.ToVectorFieldName(fieldName)
+		vectorFieldType, err := structInfo.GetVectorFieldType(vectorFieldName)
+		if err != nil {
+			// Since this is called from within a loop, we'll log the error and continue
+			sc.logger.Error("failed to get vector field type", "error", err)
+			return fbs.Field{Name: utils.ToSnakeCase(vectorFieldName), Type: fieldType}
+		}
+		return fbs.Field{
+			Name:    utils.ToSnakeCase(vectorFieldName),
+			Type:    ConvertFieldType(vectorFieldType),
+			IsArray: true,
+		}
+	}
+	return fbs.Field{
+		Name: utils.ToSnakeCase(fieldName),
+		Type: ConvertFieldType(fieldType),
+	}
+}
+
+func (*SchemaConverter) processEnums(info *ast.FileInfo, schema *fbs.Schema) {
+	for _, enumInfo := range info.Enums {
+		dataType := ConvertFieldType(enumInfo.BaseType)
+		schema.Enums = append(schema.Enums, fbs.Enum{
+			Name:     enumInfo.Name,
+			DataType: dataType,
+			Values:   ConvertEnumValues(dataType, utils.Zip(enumInfo.Keys, enumInfo.Values)),
+		})
+	}
+}

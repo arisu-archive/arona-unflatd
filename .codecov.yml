@@ -1,0 +1,18 @@
+ignore:
+  - "mocks/*"
+  - "**/*_test.go"
+  - "main.go"
+
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+        base: auto
+        if_ci_failed: error
+
+comment:
+  layout: "reach, diff, flags, files"
+  behavior: default
+  require_changes: false
