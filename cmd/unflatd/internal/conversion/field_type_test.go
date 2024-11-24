@@ -19,6 +19,11 @@ var _ = Describe("FieldType", func() {
 			result := conversion.ConvertFieldType("string")
 			Expect(result).To(Equal("string"))
 		})
+
+		It("should convert sbyte to byte", func() {
+			result := conversion.ConvertFieldType("sbyte")
+			Expect(result).To(Equal("byte"))
+		})
 	})
 
 	Context("ConvertEnumValues", func() {

@@ -14,6 +14,10 @@ func ConvertFieldType(fieldType string) string {
 		return strings.TrimPrefix(strings.TrimSuffix(fieldType, ">"), "Nullable<")
 	}
 
+	if fieldType == "sbyte" {
+		return "byte"
+	}
+
 	return fieldType
 }
 
