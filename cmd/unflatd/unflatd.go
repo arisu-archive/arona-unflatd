@@ -2,6 +2,7 @@ package unflatd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -89,6 +90,10 @@ func (c *Command) Execute(_ *cobra.Command, _ []string) error {
 		}
 		schema, conversionErr := c.converter.Convert(structs)
 		if conversionErr != nil {
+			if errors.Is(conversionErr, conversion.ErrNoTablesOrEnumsFound) {
+				c.logger.Warn("No tables or enums found in file", "file", fullPath)
+				continue
+			}
 			return fmt.Errorf("failed to convert flatbuffer: %w", conversionErr)
 		}
 		c.logger.Debug("FlatBuffer schema", "fbs", schema)

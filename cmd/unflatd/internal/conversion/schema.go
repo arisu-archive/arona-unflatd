@@ -1,12 +1,15 @@
 package conversion
 
 import (
+	"errors"
 	"log/slog"
 
 	"github.com/arisu-archive/arona-unflatd/cmd/unflatd/internal/utils"
 	"github.com/arisu-archive/arona-unflatd/pkg/fbs"
 	"github.com/arisu-archive/arona-unflatd/pkg/parser/ast"
 )
+
+var ErrNoTablesOrEnumsFound = errors.New("no tables or enums found")
 
 type SchemaConverter struct {
 	logger *slog.Logger
@@ -23,6 +26,9 @@ func (sc *SchemaConverter) Convert(info *ast.FileInfo) (*fbs.Schema, error) {
 
 	sc.processStructs(info, schema)
 	sc.processEnums(info, schema)
+	if len(schema.Tables) == 0 && len(schema.Enums) == 0 {
+		return nil, ErrNoTablesOrEnumsFound
+	}
 	return schema, nil
 }
 
