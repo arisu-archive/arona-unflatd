@@ -27,6 +27,10 @@ func (sc *SchemaConverter) Convert(info *ast.FileInfo) (*fbs.Schema, error) {
 		Namespace: info.Namespace,
 	}
 
+	// FIXME: This is a temporary fix to make sure the namespace is set to FlatData
+	if schema.Namespace == "" {
+		schema.Namespace = "FlatData"
+	}
 	sc.processStructs(info, schema)
 	sc.processEnums(info, schema)
 	if len(schema.Tables) == 0 && len(schema.Enums) == 0 {
