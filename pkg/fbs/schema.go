@@ -13,6 +13,15 @@ type Table struct {
 	Fields []Field
 }
 
+func (t Table) FieldExists(name string) bool {
+	for _, field := range t.Fields {
+		if field.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
 type Field struct {
 	Name    string
 	Type    string

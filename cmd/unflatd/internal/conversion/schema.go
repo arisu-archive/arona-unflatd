@@ -51,6 +51,9 @@ func (sc *SchemaConverter) createTable(structInfo *ast.StructInfo) fbs.Table {
 		}
 		sc.logger.Debug("Field", "name", fieldData.Name, "type", fieldData.Type)
 		field := sc.createField(structInfo, fieldData.Name, fieldData.Type)
+		if table.FieldExists(field.Name) {
+			field.Name = field.Name + "_" + utils.Checksum(field.Name+field.Type)
+		}
 		table.Fields = append(table.Fields, field)
 	}
 	return table
