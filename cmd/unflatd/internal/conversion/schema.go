@@ -9,7 +9,10 @@ import (
 	"github.com/arisu-archive/arona-unflatd/pkg/parser/ast"
 )
 
-var ErrNoTablesOrEnumsFound = errors.New("no tables or enums found")
+var (
+	ErrNoTablesOrEnumsFound = errors.New("no tables or enums found")
+	ErrNoFieldsFound        = errors.New("no fields found")
+)
 
 type SchemaConverter struct {
 	logger *slog.Logger
@@ -35,6 +38,10 @@ func (sc *SchemaConverter) Convert(info *ast.FileInfo) (*fbs.Schema, error) {
 func (sc *SchemaConverter) processStructs(info *ast.FileInfo, schema *fbs.Schema) {
 	for _, structInfo := range info.Structs {
 		table := sc.createTable(structInfo)
+		if len(table.Fields) == 0 {
+			sc.logger.Warn("no fields found in table", "table", structInfo.Name)
+			continue
+		}
 		if structInfo.HasMethod("Finish" + structInfo.Name + "Buffer") {
 			schema.RootTypes = append(schema.RootTypes, structInfo.Name)
 		}
@@ -43,6 +50,10 @@ func (sc *SchemaConverter) processStructs(info *ast.FileInfo, schema *fbs.Schema
 }
 
 func (sc *SchemaConverter) createTable(structInfo *ast.StructInfo) fbs.Table {
+	if len(structInfo.Fields) == 0 {
+		return fbs.Table{}
+	}
+
 	table := fbs.Table{
 		Name: structInfo.Name,
 	}
