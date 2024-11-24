@@ -28,8 +28,10 @@ func (v *SchemaVisitor) VisitSchema(s *Schema) string {
 		v.printer.Newline()
 	}
 
-	v.printer.Println("namespace %s;", s.Namespace)
-	v.printer.Newline()
+	if s.Namespace != "" {
+		v.printer.Println("namespace %s;", s.Namespace)
+		v.printer.Newline()
+	}
 
 	for _, enum := range s.Enums {
 		v.VisitEnum(&enum)
