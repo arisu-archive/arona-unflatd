@@ -22,9 +22,7 @@ type (
 )
 
 func (*NamespaceState) Visit(v visitor.Visitor, state *analyzer.ParsingState) {
-	if state.Namespace != "" {
-		v.VisitNamespace(state.Namespace)
-	}
+	v.VisitNamespace(state.Namespace)
 }
 
 func (*EnumState) Visit(v visitor.Visitor, state *analyzer.ParsingState) {
@@ -61,6 +59,4 @@ func (*MethodState) Visit(v visitor.Visitor, state *analyzer.ParsingState) {
 	})
 }
 
-func (*EmptyState) Visit(_ visitor.Visitor, _ *analyzer.ParsingState) {
-	// Do nothing for empty state
-}
+func (*EmptyState) Visit(_ visitor.Visitor, _ *analyzer.ParsingState) {}
