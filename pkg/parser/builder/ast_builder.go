@@ -43,6 +43,12 @@ func (b *ASTBuilder) BeginStruct(name string) {
 	}
 }
 
+func (b *ASTBuilder) AddBaseList(baseList string) {
+	if structInfo, exists := b.fileInfo.Structs[b.currentStruct]; exists {
+		structInfo.BaseList = append(structInfo.BaseList, baseList)
+	}
+}
+
 func (b *ASTBuilder) AddField(field *ast.FieldInfo) {
 	if structInfo, exists := b.fileInfo.Structs[b.currentStruct]; exists {
 		structInfo.Fields = append(structInfo.Fields, field)

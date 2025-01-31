@@ -102,5 +102,7 @@ func (p *Parser) processCapture(capture sitter.QueryCapture, content []byte, ps 
 		ps.HandleEnumMemberName(nodeContent)
 	case "enum_member_value":
 		ps.HandleEnumMemberValue(nodeContent)
+	case "interface":
+		ps.HandleInterface(nodeContent)
 	}
 }

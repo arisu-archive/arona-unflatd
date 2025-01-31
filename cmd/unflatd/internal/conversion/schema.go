@@ -46,6 +46,16 @@ func (sc *SchemaConverter) processStructs(info *ast.FileInfo, schema *fbs.Schema
 			sc.logger.Warn("no fields found in table", "table", structInfo.Name)
 			continue
 		}
+		if !utils.Contains(structInfo.BaseList, []string{"IFlatbufferObject"}) {
+			sc.logger.Warn(
+				"struct is not a flatbuffer type",
+				"struct",
+				structInfo.Name,
+				"baseList",
+				structInfo.BaseList,
+			)
+			continue
+		}
 		if structInfo.HasMethod("Finish" + structInfo.Name + "Buffer") {
 			schema.RootTypes = append(schema.RootTypes, structInfo.Name)
 		}

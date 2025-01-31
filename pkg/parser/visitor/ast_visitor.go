@@ -27,6 +27,10 @@ func (v *ASTVisitor) VisitStruct(structInfo *ast.StructInfo) {
 	v.builder.BeginStruct(structInfo.Name)
 }
 
+func (v *ASTVisitor) VisitStructBaseList(baseList string) {
+	v.builder.AddBaseList(baseList)
+}
+
 func (v *ASTVisitor) VisitField(structName string, fieldInfo *ast.FieldInfo) {
 	v.builder.BeginStruct(structName)
 	v.builder.AddField(fieldInfo)

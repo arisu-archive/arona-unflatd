@@ -14,6 +14,8 @@ func DetermineState(state *analyzer.ParsingState) NodeState {
 		return &MethodState{}
 	case state.Name != "":
 		return &StructState{}
+	case state.StructBaseList != "":
+		return &StructBaseListState{}
 	default:
 		return &EmptyState{}
 	}

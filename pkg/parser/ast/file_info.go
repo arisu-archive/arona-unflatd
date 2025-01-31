@@ -25,9 +25,10 @@ func (e *EnumInfo) Merge(other *EnumInfo) {
 }
 
 type StructInfo struct {
-	Name    string
-	Fields  []*FieldInfo
-	Methods map[string]*MethodInfo
+	Name     string
+	BaseList []string
+	Fields   []*FieldInfo
+	Methods  map[string]*MethodInfo
 }
 
 type FieldInfo struct {

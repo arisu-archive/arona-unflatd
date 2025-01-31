@@ -10,15 +10,17 @@ type ParsingState struct {
 	Enum               ast.EnumInfo
 	Method             ast.MethodInfo
 	PreviousMethodName string
+	StructBaseList     string
 }
 
-func (ps *ParsingState) Reset() {
-	ps.Namespace = ""
-	ps.Name = ""
-	ps.Modifiers = []string{}
-	ps.Field = ast.FieldInfo{}
-	ps.Enum = ast.EnumInfo{
+func (state *ParsingState) Reset() {
+	state.Namespace = ""
+	state.Name = ""
+	state.Modifiers = []string{}
+	state.Field = ast.FieldInfo{}
+	state.Enum = ast.EnumInfo{
 		BaseType: "int",
 	}
-	ps.Method = ast.MethodInfo{}
+	state.Method = ast.MethodInfo{}
+	state.StructBaseList = ""
 }
