@@ -6,16 +6,14 @@ func DetermineState(state *analyzer.ParsingState) NodeState {
 	switch {
 	case state.Namespace != "":
 		return &NamespaceState{}
-	case state.Name != "" && state.Enum.Name != "":
+	case state.Enum.Name != "":
 		return &EnumState{}
-	case state.Name != "" && state.Field.Name != "":
+	case state.Field.Name != "":
 		return &FieldState{}
-	case state.Name != "" && state.Method.Name != "":
+	case state.Method.Name != "":
 		return &MethodState{}
-	case state.Name != "":
+	case state.Name != "" && len(state.StructBaseList) > 0:
 		return &StructState{}
-	case state.StructBaseList != "":
-		return &StructBaseListState{}
 	default:
 		return &EmptyState{}
 	}

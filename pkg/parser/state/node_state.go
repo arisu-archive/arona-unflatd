@@ -13,13 +13,12 @@ type NodeState interface {
 
 // Create concrete states for each node type.
 type (
-	NamespaceState      struct{}
-	EnumState           struct{}
-	StructState         struct{}
-	StructBaseListState struct{}
-	FieldState          struct{}
-	MethodState         struct{}
-	EmptyState          struct{}
+	NamespaceState struct{}
+	EnumState      struct{}
+	StructState    struct{}
+	FieldState     struct{}
+	MethodState    struct{}
+	EmptyState     struct{}
 )
 
 func (*NamespaceState) Visit(v visitor.Visitor, state *analyzer.ParsingState) {
@@ -38,11 +37,10 @@ func (*EnumState) Visit(v visitor.Visitor, state *analyzer.ParsingState) {
 }
 
 func (*StructState) Visit(v visitor.Visitor, state *analyzer.ParsingState) {
-	v.VisitStruct(&ast.StructInfo{Name: state.Name})
-}
-
-func (*StructBaseListState) Visit(v visitor.Visitor, state *analyzer.ParsingState) {
-	v.VisitStructBaseList(state.StructBaseList)
+	v.VisitStruct(&ast.StructInfo{
+		Name:     state.Name,
+		BaseList: state.StructBaseList,
+	})
 }
 
 func (*FieldState) Visit(v visitor.Visitor, state *analyzer.ParsingState) {

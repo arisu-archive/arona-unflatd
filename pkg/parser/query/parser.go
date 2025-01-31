@@ -80,7 +80,7 @@ func (p *Parser) processCapture(capture sitter.QueryCapture, content []byte, ps 
 		ps.HandleNamespace(nodeContent)
 	case "struct_name":
 		ps.HandleName(nodeContent)
-	case "modifier", "method_modifier", "enum_modifier":
+	case "modifier", "method_modifier", "enum_modifier", "field_modifier":
 		ps.HandleModifier(nodeContent)
 	case "field_name":
 		ps.HandleFieldName(nodeContent)

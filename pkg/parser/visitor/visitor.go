@@ -7,7 +7,6 @@ type Visitor interface {
 	VisitNamespace(namespace string)
 	VisitEnum(enumInfo *ast.EnumInfo)
 	VisitStruct(structInfo *ast.StructInfo)
-	VisitStructBaseList(baseList string)
 	VisitField(structName string, fieldInfo *ast.FieldInfo)
 	VisitMethod(structName string, methodInfo *ast.MethodInfo)
 }

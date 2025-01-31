@@ -10,7 +10,7 @@ type ParsingState struct {
 	Enum               ast.EnumInfo
 	Method             ast.MethodInfo
 	PreviousMethodName string
-	StructBaseList     string
+	StructBaseList     []string
 }
 
 func (state *ParsingState) Reset() {
@@ -22,5 +22,5 @@ func (state *ParsingState) Reset() {
 		BaseType: "int",
 	}
 	state.Method = ast.MethodInfo{}
-	state.StructBaseList = ""
+	state.StructBaseList = []string{}
 }

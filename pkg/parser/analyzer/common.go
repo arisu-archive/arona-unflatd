@@ -13,5 +13,5 @@ func (state *ParsingState) HandleNamespace(namespace string) {
 }
 
 func (state *ParsingState) HandleInterface(name string) {
-	state.StructBaseList = name
+	state.StructBaseList = append(state.StructBaseList, name)
 }
