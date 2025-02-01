@@ -3,7 +3,7 @@ module github.com/arisu-archive/arona-unflatd
 go 1.22.5
 
 require (
-	github.com/bmatcuk/doublestar/v4 v4.7.1
+	github.com/bmatcuk/doublestar/v4 v4.8.1
 	github.com/onsi/ginkgo/v2 v2.22.2
 	github.com/onsi/gomega v1.36.2
 	github.com/smacker/go-tree-sitter v0.0.0-20240827094217-dd81d9e9be82
