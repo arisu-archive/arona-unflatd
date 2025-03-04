@@ -91,14 +91,14 @@ public enum TestEnum
 
 	Context("when input directory doesn't exist", func() {
 		It("should return an error", func() {
-			cmd := unflatd.NewCommand(logger)
-			cobraCmd := cmd.Command()
+			unflatCmd := unflatd.NewCommand(logger)
+			cobraCmd := unflatCmd.Command()
 			cobraCmd.SetArgs([]string{
 				"--input", "/nonexistent/path",
 				"--output", outputDir,
 			})
 
-			err := cmd.Execute(cmd.Command(), []string{})
+			err := unflatCmd.Execute(unflatCmd.Command(), []string{})
 			Expect(err).To(HaveOccurred())
 		})
 	})

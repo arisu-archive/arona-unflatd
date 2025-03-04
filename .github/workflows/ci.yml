@@ -32,6 +32,10 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
 
+    - name: Setup environment
+      run: |
+        make prepare
+
     - name: Run tests
       run: |
         make test
@@ -45,6 +49,7 @@ jobs:
         env_vars: OS,PYTHON
         name: codecov-umbrella
         fail_ci_if_error: true
+        token: ${{ secrets.CODECOV_TOKEN }}
 
   quality:
     name: Code Quality
