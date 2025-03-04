@@ -32,6 +32,10 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
 
+    - name: Setup environment
+      run: |
+        make prepare
+
     - name: Run tests
       run: |
         make test
