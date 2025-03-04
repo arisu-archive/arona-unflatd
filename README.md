@@ -1,49 +1,90 @@
-# arona-unflatd
+# AronaUnflatd - FlatBuffer Schema Recovery Tool
 
-AronaUnflatd is a specialized tool designed to reconstruct FlatBuffer schema files from decompiled C# code. It analyzes the structure and attributes of decompiled FlatBuffer-generated C# classes and automatically generates the corresponding `.fbs` schema files, making it easier to recover original schemas when they're not available.
+[![Go Version](https://img.shields.io/github/go-mod/go-version/arisu-archive/arona-unflatd)](go.mod)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/arisu-archive/arona-unflatd/ci.yml)](https://github.com/arisu-archive/arona-unflatd/actions)
+[![Coverage Status](https://codecov.io/gh/arisu-archive/arona-unflatd/branch/master/graph/badge.svg)](https://codecov.io/gh/arisu-archive/arona-unflatd)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-## Prerequisites
+AronaUnflatd is a specialized tool that reconstructs FlatBuffer schema files (.fbs) from decompiled C# code using advanced static analysis techniques.
 
-To use this tool, you need to have the following installed on your system:
+## Features
 
-|  Tool  | Version |
-| :----: | :-----: |
-|   Go   | ≥ 1.22  |
-
-## Key Features
-
-- Converts decompiled C# FlatBuffer classes back to `.fbs` schema
-- Preserves table structures, fields, and attributes
-- Reconstructs enum definitions
-- Maintains field ordering and types
-- Supports nested tables and unions
+- 🛠️ Converts decompiled C# classes to FlatBuffer schemas
+- 🧩 Preserves table structures, fields, and attributes
+- 🔄 Reconstructs enum definitions with values
+- 🌐 Handles nested tables and union types
+- 📂 Processes entire directories recursively
+- 📊 Maintains field ordering and type information
+- ✅ Validation of generated schemas
+- 📈 Verbose logging for debugging
 
 ## Installation
 
-```sh
+### From Source
+
+```bash
+git clone https://github.com/arisu-archive/arona-unflatd
+cd arona-unflatd
+make build
+```
+
+### Go Install
+
+```bash
 go install github.com/arisu-archive/arona-unflatd@latest
 ```
 
 ## Usage
 
-```sh
-arona-unflatd [flags] <input-directory>
+### Basic Conversion
+
+```bash
+arona-unflatd decompile \
+  -i ./decompiled_csharp \
+  -o ./schema_output
 ```
 
-### Flags
+## Technical Overview
 
-| Flag | Description |
-| :--: | :---------: |
-| `-i` | Input directory for decompiled C# code |
-| `-o` | Output directory for generated schema files |
-| `-v` | Enable verbose logging |
+### Parsing Pipeline
 
-### Example
+1. **Lexical Analysis** - Tree-sitter tokenizes C# source
+2. **Syntax Tree Construction** - Builds AST with 50+ node types
+3. **Pattern Matching** - Executes S-expression queries.
+4. **Semantic Analysis** - Resolves type dependencies
+5. **IDL Generation** - Outputs validated .fbs files
 
-```sh
-arona-unflatd -i ./src/FlatData -o ./schema
+### Key Components
+
+| Component          | Responsibility                          | Tech Stack        |
+|---------------------|-----------------------------------------|-------------------|
+| Parser Engine       | Syntax tree construction                | Tree-sitter C#    |
+| AST Walker          | Pattern matching and node traversal     | Go + C bindings   |
+| Type Resolver       | C# to FBS type conversion               | Custom rule engine|
+| Schema Generator    | IDL formatting and validation           | Template engine   |
+
+## Development
+
+### Build System
+```bash
+make tidy    # Format code and clean deps
+make audit   # Run security checks (govulncheck)
+make mocks   # Generate mocks
+make test    # Run tests with coverage
+make bench   # Performance benchmarking
 ```
+
+## Contributing
+
+We welcome contributions! Please see our [Contribution Guidelines](CONTRIBUTING.md) and:
+- Follow Go style guidelines
+- Include Ginkgo test coverage
+- Update documentation accordingly
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+**Disclaimer**: This tool requires properly decompiled C# code. Schema recovery accuracy depends on original binary structure preservation during decompilation.
