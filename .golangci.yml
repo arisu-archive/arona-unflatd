@@ -238,6 +238,12 @@ linters-settings:
         disabled: true # Already checked by gocognit.
       - name: flag-parameter
         disabled: true # We use boolean parameters.
+      - name: dot-imports
+        arguments:
+          - allowedPackages:
+            - "github.com/onsi/ginkgo"
+            - "github.com/onsi/ginkgo/v2"
+            - "github.com/onsi/gomega"
 
   misspell:
     locale: "US"
