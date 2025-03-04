@@ -30,11 +30,11 @@ func (v *ASTVisitor) VisitStruct(structInfo *ast.StructInfo) {
 	}
 }
 
-func (v *ASTVisitor) VisitField(structName string, fieldInfo *ast.FieldInfo) {
+func (v *ASTVisitor) VisitField(_ string, fieldInfo *ast.FieldInfo) {
 	v.builder.AddField(fieldInfo)
 }
 
-func (v *ASTVisitor) VisitMethod(structName string, methodInfo *ast.MethodInfo) {
+func (v *ASTVisitor) VisitMethod(_ string, methodInfo *ast.MethodInfo) {
 	v.builder.AddMethod(methodInfo)
 }
 

@@ -27,7 +27,7 @@ var _ = Describe("Command", func() {
 	Describe("RunE", func() {
 		Context("when the command executes successfully", func() {
 			It("should log success and return nil", func() {
-				executor := cmd.RunE("test-verb", logger, func(cmd *cobra.Command, args []string) error {
+				executor := cmd.RunE("test-verb", logger, func(*cobra.Command, []string) error {
 					return nil
 				})
 
@@ -39,7 +39,7 @@ var _ = Describe("Command", func() {
 		Context("when the command returns an error", func() {
 			It("should wrap the error with timing information", func() {
 				expectedErr := errors.New("command failed")
-				executor := cmd.RunE("test-verb", logger, func(cmd *cobra.Command, args []string) error {
+				executor := cmd.RunE("test-verb", logger, func(*cobra.Command, []string) error {
 					return expectedErr
 				})
 
@@ -52,7 +52,7 @@ var _ = Describe("Command", func() {
 
 		Context("when the command panics", func() {
 			It("should recover and return an error", func() {
-				executor := cmd.RunE("test-verb", logger, func(cmd *cobra.Command, args []string) error {
+				executor := cmd.RunE("test-verb", logger, func(*cobra.Command, []string) error {
 					panic("unexpected panic")
 				})
 
