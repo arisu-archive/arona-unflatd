@@ -53,7 +53,8 @@ var _ = Describe("SchemaConverter", func() {
 				Namespace: "FlatData",
 				Structs: map[string]*ast.StructInfo{
 					"TestTable": {
-						Name: "TestTable",
+						Name:     "TestTable",
+						BaseList: []string{"IFlatbufferObject"},
 						Fields: []*ast.FieldInfo{
 							{
 								Name:      "Id",
@@ -75,6 +76,25 @@ var _ = Describe("SchemaConverter", func() {
 			Expect(schema.Tables).To(HaveLen(1))
 			Expect(schema.Tables[0].Name).To(Equal("TestTable"))
 			Expect(schema.Tables[0].Fields).To(HaveLen(2))
+		})
+	})
+
+	Context("when converting a file with a struct that is not a flatbuffer type", func() {
+		It("should not convert the struct", func() {
+			fileInfo := &ast.FileInfo{
+				Namespace: "FlatData",
+				Structs: map[string]*ast.StructInfo{
+					"TestTable": {
+						Name:     "TestTable",
+						BaseList: []string{"NotFlatBufferType"},
+					},
+				},
+			}
+
+			schema, err := converter.Convert(fileInfo)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("no tables or enums found"))
+			Expect(schema).To(BeNil())
 		})
 	})
 })
