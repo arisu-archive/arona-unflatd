@@ -1,9 +1,12 @@
 # AronaUnflatd - FlatBuffer Schema Recovery Tool
 
-[![Go Version](https://img.shields.io/github/go-mod/go-version/arisu-archive/arona-unflatd)](go.mod)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/arisu-archive/arona-unflatd/ci.yml)](https://github.com/arisu-archive/arona-unflatd/actions)
-[![Coverage Status](https://codecov.io/gh/arisu-archive/arona-unflatd/branch/master/graph/badge.svg)](https://codecov.io/gh/arisu-archive/arona-unflatd)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+![Global Version](https://img.shields.io/badge/dynamic/yaml?url=https%3A%2F%2Fba.pokeguy.dev%2Fcom.nexon.bluearchive%2Fversion.txt&query=%24&prefix=v&style=for-the-badge&logo=nexon&label=Global&color=0099ff)![Japan Version](https://img.shields.io/badge/dynamic/yaml?url=https%3A%2F%2Fba.pokeguy.dev%2Fcom.YostarJP.BlueArchive%2Fversion.txt&query=%24&prefix=v&style=for-the-badge&logo=googleplay&label=Yostar&color=7d3cc8)
+
+[![Go Version](https://img.shields.io/github/go-mod/go-version/arisu-archive/arona-unflatd?style=for-the-badge)](go.mod)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/arisu-archive/arona-unflatd/ci.yml?style=for-the-badge)](https://github.com/arisu-archive/arona-unflatd/actions)
+[![Coverage Status](https://img.shields.io/codecov/c/github/arisu-archive/arona-unflatd?style=for-the-badge
+)](https://codecov.io/gh/arisu-archive/arona-unflatd)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
 
 AronaUnflatd is a specialized tool that reconstructs FlatBuffer schema files (.fbs) from decompiled C# code using advanced static analysis techniques.
 
