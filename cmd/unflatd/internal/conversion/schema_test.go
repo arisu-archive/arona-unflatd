@@ -48,33 +48,55 @@ var _ = Describe("SchemaConverter", func() {
 	})
 
 	Context("when converting a file with a struct", func() {
-		It("should convert struct to table correctly", func() {
-			fileInfo := &ast.FileInfo{
-				Namespace: "FlatData",
-				Structs: map[string]*ast.StructInfo{
-					"TestTable": {
-						Name: "TestTable",
-						Fields: []*ast.FieldInfo{
-							{
-								Name:      "Id",
-								Type:      "int",
-								Modifiers: []string{"public"},
-							},
-							{
-								Name:      "Name",
-								Type:      "string",
-								Modifiers: []string{"public"},
+		Context("when the struct is a flatbuffer type", func() {
+			It("should convert struct to table correctly", func() {
+				fileInfo := &ast.FileInfo{
+					Namespace: "FlatData",
+					Structs: map[string]*ast.StructInfo{
+						"TestTable": {
+							Name:     "TestTable",
+							BaseList: []string{"IFlatbufferObject"},
+							Fields: []*ast.FieldInfo{
+								{
+									Name:      "Id",
+									Type:      "int",
+									Modifiers: []string{"public"},
+								},
+								{
+									Name:      "Name",
+									Type:      "string",
+									Modifiers: []string{"public"},
+								},
 							},
 						},
 					},
-				},
-			}
+				}
 
-			schema, err := converter.Convert(fileInfo)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(schema.Tables).To(HaveLen(1))
-			Expect(schema.Tables[0].Name).To(Equal("TestTable"))
-			Expect(schema.Tables[0].Fields).To(HaveLen(2))
+				schema, err := converter.Convert(fileInfo)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(schema.Tables).To(HaveLen(1))
+				Expect(schema.Tables[0].Name).To(Equal("TestTable"))
+				Expect(schema.Tables[0].Fields).To(HaveLen(2))
+			})
+
+			Context("when the struct is not a flatbuffer type", func() {
+				It("should not convert the struct", func() {
+					fileInfo := &ast.FileInfo{
+						Namespace: "FlatData",
+						Structs: map[string]*ast.StructInfo{
+							"TestTable": {
+								Name:     "TestTable",
+								BaseList: []string{"NotFlatBufferType"},
+							},
+						},
+					}
+
+					schema, err := converter.Convert(fileInfo)
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("no tables or enums found"))
+					Expect(schema).To(BeNil())
+				})
+			})
 		})
 	})
 })

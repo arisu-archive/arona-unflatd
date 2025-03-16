@@ -30,9 +30,16 @@ const StructParsingQuery = `
 
 ; Group4: Struct fields
 (property_declaration
-	(modifier)* @field_modifier
-	type: (_) @field_type
-	name: (identifier) @field_name
+  (modifier)* @field_modifier
+  type: (_) @field_type
+  name: (identifier) @field_name
+  accessors: (accessor_list
+    (accessor_declaration
+      (attribute_list
+        (attribute) @accessor_attribute
+      )*
+    )*
+  )
 )
 
 ; Group5: Struct methods

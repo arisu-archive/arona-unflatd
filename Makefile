@@ -11,6 +11,8 @@ BINARY_NAME := arona-unflatd
 prepare:
 	mkdir -p ${TMP_DIR}/bin
 	go env -w CGO_ENABLED=1
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.1
+	go install github.com/onsi/ginkgo/v2/ginkgo@v2.22.2
 
 ## help: print this help message
 .PHONY: help

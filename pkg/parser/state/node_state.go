@@ -46,6 +46,7 @@ func (*FieldState) Visit(v visitor.Visitor, state *analyzer.ParsingState) {
 		Name:      state.Field.Name,
 		Type:      state.Field.Type,
 		Modifiers: state.Modifiers,
+		Accessors: state.Field.Accessors,
 	})
 }
 

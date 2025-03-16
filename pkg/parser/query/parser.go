@@ -74,7 +74,6 @@ func (p *Parser) processTree(rootNode *sitter.Node, content []byte) (*ast.FileIn
 func (p *Parser) processCapture(capture sitter.QueryCapture, content []byte, ps *analyzer.ParsingState) {
 	captureName := p.query.CaptureNameForId(capture.Index)
 	nodeContent := capture.Node.Content(content)
-
 	switch captureName {
 	case "namespace":
 		ps.HandleNamespace(nodeContent)
@@ -102,6 +101,8 @@ func (p *Parser) processCapture(capture sitter.QueryCapture, content []byte, ps 
 		ps.HandleEnumMemberName(nodeContent)
 	case "enum_member_value":
 		ps.HandleEnumMemberValue(nodeContent)
+	case "accessor_attribute":
+		ps.HandleAccessorAttribute(capture.Node, content)
 	case "interface":
 		ps.HandleInterface(nodeContent)
 	}

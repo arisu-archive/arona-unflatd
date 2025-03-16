@@ -66,6 +66,14 @@ var _ = Describe("SchemaVisitor", func() {
 			// Check root_type
 			Expect(result).To(ContainSubstring("root_type TestTable;"))
 		})
+
+		It("should sort imports alphabetically", func() {
+			schema.Imports = []string{"Z", "X", "Y"}
+			result := visitor.VisitSchema(schema)
+			Expect(result).To(ContainSubstring(`include "X.fbs";
+include "Y.fbs";
+include "Z.fbs";`))
+		})
 	})
 
 	Context("when visiting a schema with multiple root types", func() {

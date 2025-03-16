@@ -2,6 +2,7 @@ package fbs
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -22,6 +23,8 @@ func NewSchemaVisitor() *SchemaVisitor {
 
 func (v *SchemaVisitor) VisitSchema(s *Schema) string {
 	if len(s.Imports) > 0 {
+		// Sort imports alphabetically to avoid unnecessary diffs
+		slices.Sort(s.Imports)
 		for _, imp := range s.Imports {
 			v.printer.Println("include \"%s.fbs\";", imp)
 		}
