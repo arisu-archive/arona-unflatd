@@ -3,6 +3,8 @@ package conversion
 import (
 	"errors"
 	"log/slog"
+	"sort"
+	"strconv"
 
 	"github.com/arisu-archive/arona-unflatd/cmd/unflatd/internal/utils"
 	"github.com/arisu-archive/arona-unflatd/pkg/fbs"
@@ -63,6 +65,29 @@ func (sc *SchemaConverter) processStructs(info *ast.FileInfo, schema *fbs.Schema
 	}
 }
 
+func sortByRVA(fields []*ast.FieldInfo) func(i, j int) bool {
+	return func(i, j int) bool {
+		if len(fields[i].Accessors) == 0 {
+			return false
+		}
+		if len(fields[j].Accessors) == 0 {
+			return true
+		}
+		accessorI := fields[i].Accessors["Address"]
+		accessorJ := fields[j].Accessors["Address"]
+		// Convert the RVA to an integer
+		rvaI, err := strconv.ParseInt(accessorI["RVA"], 16, 64)
+		if err != nil {
+			return false
+		}
+		rvaJ, err := strconv.ParseInt(accessorJ["RVA"], 16, 64)
+		if err != nil {
+			return false
+		}
+		return rvaI < rvaJ
+	}
+}
+
 func (sc *SchemaConverter) createTable(structInfo *ast.StructInfo) fbs.Table {
 	if len(structInfo.Fields) == 0 {
 		return fbs.Table{}
@@ -72,6 +97,7 @@ func (sc *SchemaConverter) createTable(structInfo *ast.StructInfo) fbs.Table {
 		Name: structInfo.Name,
 	}
 
+	sort.Slice(structInfo.Fields, sortByRVA(structInfo.Fields))
 	for _, fieldData := range structInfo.Fields {
 		// We need to filter out the fields that are not public and are overridden by properties
 		if !utils.Contains(fieldData.Modifiers, []string{"public", "static"}) {
