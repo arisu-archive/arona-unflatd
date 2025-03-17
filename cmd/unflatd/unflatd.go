@@ -126,7 +126,11 @@ func (c *Command) Execute(_ *cobra.Command, _ []string) error {
 		if !hasReference(schema, refCount) {
 			c.logger.Debug("Removing dangling schema", "path", path, "namespace", schema.Namespace)
 			delete(schemas, path)
+			continue
 		}
+
+		// Force the namespace to the specified namespace (As go flatc cannot handle flatbuffers without namespace)
+		schema.Namespace = c.opts.namespace
 	}
 
 	// Write all the schemas to output
