@@ -29,10 +29,6 @@ func (sc *SchemaConverter) Convert(info *ast.FileInfo) (*fbs.Schema, error) {
 		Namespace: info.Namespace,
 	}
 
-	// FIXME: This is a temporary fix to make sure the namespace is set to FlatData
-	if schema.Namespace == "" {
-		schema.Namespace = "FlatData"
-	}
 	sc.processStructs(info, schema)
 	sc.processEnums(info, schema)
 	if len(schema.Tables) == 0 && len(schema.Enums) == 0 {
@@ -45,11 +41,11 @@ func (sc *SchemaConverter) processStructs(info *ast.FileInfo, schema *fbs.Schema
 	for _, structInfo := range info.Structs {
 		table := sc.createTable(structInfo)
 		if len(table.Fields) == 0 {
-			sc.logger.Warn("no fields found in table", "table", structInfo.Name)
+			sc.logger.Debug("no fields found in table", "table", structInfo.Name)
 			continue
 		}
 		if !utils.Contains(structInfo.BaseList, []string{"IFlatbufferObject"}) {
-			sc.logger.Warn(
+			sc.logger.Debug(
 				"struct is not a flatbuffer type",
 				"struct",
 				structInfo.Name,
@@ -140,7 +136,7 @@ func (sc *SchemaConverter) createField(structInfo *ast.StructInfo, fieldName, fi
 func (sc *SchemaConverter) processEnums(info *ast.FileInfo, schema *fbs.Schema) {
 	for _, enumInfo := range info.Enums {
 		if info.Namespace != "FlatData" {
-			sc.logger.Warn("enum is not in FlatData namespace", "enum", enumInfo.Name)
+			sc.logger.Debug("enum is not in FlatData namespace", "enum", enumInfo.Name)
 			continue
 		}
 		dataType := ConvertFieldType(enumInfo.BaseType)

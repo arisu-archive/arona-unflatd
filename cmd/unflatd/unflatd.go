@@ -91,7 +91,7 @@ func (c *Command) Execute(_ *cobra.Command, _ []string) error {
 		schema, conversionErr := c.converter.Convert(structs)
 		if conversionErr != nil {
 			if errors.Is(conversionErr, conversion.ErrNoTablesOrEnumsFound) {
-				c.logger.Warn("No tables or enums found in file", "file", fullPath)
+				c.logger.Debug("No tables or enums found in file", "file", fullPath)
 				continue
 			}
 			return fmt.Errorf("failed to convert flatbuffer: %w", conversionErr)
