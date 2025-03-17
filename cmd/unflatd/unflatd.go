@@ -48,6 +48,13 @@ func NewCommand(logger *slog.Logger) *Command {
 		"",
 		"Output directory for the generated FlatBuffer schema",
 	)
+	cobraCmd.Flags().StringVarP(
+		&unflatd.opts.namespace,
+		"namespace",
+		"n",
+		"FlatData",
+		"Filter out the mismatched namespace in the generated FlatBuffer schema",
+	)
 	if err := cobraCmd.MarkFlagRequired("input"); err != nil {
 		panic("failed to mark input flag as required: " + err.Error())
 	}
@@ -64,7 +71,7 @@ func (c *Command) Command() *cobra.Command {
 }
 
 func (c *Command) Execute(_ *cobra.Command, _ []string) error {
-	c.logger.Debug("Decompiling C# code", "input", c.opts.input, "output", c.opts.output)
+	c.logger.Debug("Decompiling C# code", "input", c.opts.input, "output", c.opts.output, "namespace", c.opts.namespace)
 	// Create output directory if not exists
 	if err := os.MkdirAll(c.opts.output, 0o700); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
@@ -100,11 +107,27 @@ func (c *Command) Execute(_ *cobra.Command, _ []string) error {
 		c.logger.Info("Generated FlatBuffer schema", "file", fullPath)
 		baseFile := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
 		outputPath := filepath.Join(c.opts.output, baseFile+".fbs")
+		// Mark the reference count of each schema.
 		schemas[outputPath] = schema
 	}
 
 	// Post processing: Fixing the imports
 	fixImports(schemas)
+	refCount := make(map[string]int)
+	for _, schema := range schemas {
+		for _, imp := range schema.Imports {
+			refCount[imp]++
+		}
+	}
+
+	// Remove the schemas that are not referenced and not equal to the namespace.
+	for path, schema := range schemas {
+		// Check if the file contains the reference to the schema.
+		if !hasReference(schema, refCount) {
+			c.logger.Debug("Removing dangling schema", "path", path, "namespace", schema.Namespace)
+			delete(schemas, path)
+		}
+	}
 
 	// Write all the schemas to output
 	for outputPath, schema := range schemas {
@@ -117,6 +140,20 @@ func (c *Command) Execute(_ *cobra.Command, _ []string) error {
 		}
 	}
 	return nil
+}
+
+func hasReference(schema *fbs.Schema, refCount map[string]int) bool {
+	for _, table := range schema.Tables {
+		if refCount[table.Name] > 0 {
+			return true
+		}
+	}
+	for _, enum := range schema.Enums {
+		if refCount[enum.Name] > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func fixImports(schemas map[string]*fbs.Schema) {
