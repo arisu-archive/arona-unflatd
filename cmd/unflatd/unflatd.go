@@ -122,6 +122,12 @@ func (c *Command) Execute(_ *cobra.Command, _ []string) error {
 
 	// Remove the schemas that are not referenced and not equal to the namespace.
 	for path, schema := range schemas {
+		// Skip the schema if it is equal to the namespace.
+		if schema.Namespace == c.opts.namespace {
+			c.logger.Debug("Skipping schema", "path", path, "namespace", schema.Namespace)
+			continue
+		}
+
 		// Check if the file contains the reference to the schema.
 		if !hasReference(schema, refCount) {
 			c.logger.Debug("Removing dangling schema", "path", path, "namespace", schema.Namespace)
