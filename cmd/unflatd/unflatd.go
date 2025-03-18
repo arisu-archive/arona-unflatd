@@ -113,28 +113,24 @@ func (c *Command) Execute(_ *cobra.Command, _ []string) error {
 
 	// Post processing: Fixing the imports
 	fixImports(schemas)
-	refCount := make(map[string]int)
+	refCount := make(fbs.SchemaReference)
 	for _, schema := range schemas {
 		for _, imp := range schema.Imports {
-			refCount[imp]++
+			refCount[imp] = append(refCount[imp], schema)
 		}
 	}
 
 	// Remove the schemas that are not referenced and not equal to the namespace.
 	for path, schema := range schemas {
-		// Skip the schema if it is equal to the namespace.
-		if schema.Namespace == c.opts.namespace {
-			c.logger.Debug("Skipping schema", "path", path, "namespace", schema.Namespace)
-			continue
-		}
-
-		// Check if the file contains the reference to the schema.
-		if !hasReference(schema, refCount) {
+		// No reference and not equal to the namespace
+		schemaFile := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
+		if !refCount.HasNamespace(schemaFile, c.opts.namespace) && schema.Namespace != c.opts.namespace {
 			c.logger.Debug("Removing dangling schema", "path", path, "namespace", schema.Namespace)
 			delete(schemas, path)
 			continue
 		}
 
+		c.logger.Debug("This is a valid schema", "path", path, "namespace", schema.Namespace)
 		// Force the namespace to the specified namespace (As go flatc cannot handle flatbuffers without namespace)
 		schema.Namespace = c.opts.namespace
 	}
@@ -151,20 +147,6 @@ func (c *Command) Execute(_ *cobra.Command, _ []string) error {
 		}
 	}
 	return nil
-}
-
-func hasReference(schema *fbs.Schema, refCount map[string]int) bool {
-	for _, table := range schema.Tables {
-		if refCount[table.Name] > 0 {
-			return true
-		}
-	}
-	for _, enum := range schema.Enums {
-		if refCount[enum.Name] > 0 {
-			return true
-		}
-	}
-	return false
 }
 
 func fixImports(schemas map[string]*fbs.Schema) {
