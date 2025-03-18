@@ -96,13 +96,11 @@ func (sc *SchemaConverter) createTable(structInfo *ast.StructInfo) fbs.Table {
 	sort.Slice(structInfo.Fields, sortByRVA(structInfo.Fields))
 	for _, fieldData := range structInfo.Fields {
 		// We need to filter out the fields that are not public and are overridden by properties
-		if !utils.Contains(fieldData.Modifiers, []string{"public", "static"}) {
+		sc.logger.Debug("Field", "name", fieldData.Name, "modifiers", fieldData.Modifiers, "type", fieldData.Type)
+		if !structInfo.HasMethod("Add"+fieldData.Name) && !structInfo.IsVector(fieldData.Name, fieldData.Type) {
+			sc.logger.Debug("Field is not an add method", "name", fieldData.Name, "modifiers", fieldData.Modifiers, "type", fieldData.Type)
 			continue
 		}
-		if utils.Contains(fieldData.Modifiers, []string{"override"}) {
-			continue
-		}
-		sc.logger.Debug("Field", "name", fieldData.Name, "type", fieldData.Type)
 		field := sc.createField(structInfo, fieldData.Name, fieldData.Type)
 		if table.FieldExists(field.Name) {
 			field.Name = field.Name + "_" + utils.Checksum(field.Name+field.Type)

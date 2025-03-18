@@ -4,7 +4,7 @@ const StructParsingQuery = `
 ; Group1: Namespace
 (
   (file_scoped_namespace_declaration
-    (identifier) @namespace) @namespace_group
+    name: [(identifier) (qualified_name)] @namespace)
 )
 
 ; Group2: Enum

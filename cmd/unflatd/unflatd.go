@@ -141,6 +141,7 @@ func (c *Command) Execute(_ *cobra.Command, _ []string) error {
 
 	// Write all the schemas to output
 	for outputPath, schema := range schemas {
+		c.logger.Debug("Schema", "schema", schema)
 		c.logger.Info("Writing FlatBuffer schema", "file", outputPath)
 		v := fbs.NewSchemaVisitor()
 		result := v.VisitSchema(schema)
