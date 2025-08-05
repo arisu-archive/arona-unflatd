@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/arisu-archive/arona-unflatd/cmd/unflatd/internal/utils"
 	"github.com/arisu-archive/arona-unflatd/pkg/fbs"
@@ -39,11 +40,6 @@ func (sc *SchemaConverter) Convert(info *ast.FileInfo) (*fbs.Schema, error) {
 
 func (sc *SchemaConverter) processStructs(info *ast.FileInfo, schema *fbs.Schema) {
 	for _, structInfo := range info.Structs {
-		table := sc.createTable(structInfo)
-		if len(table.Fields) == 0 {
-			sc.logger.Debug("no fields found in table", "table", structInfo.Name)
-			continue
-		}
 		if !utils.Contains(structInfo.BaseList, []string{"IFlatbufferObject"}) {
 			sc.logger.Debug(
 				"struct is not a flatbuffer type",
@@ -57,7 +53,58 @@ func (sc *SchemaConverter) processStructs(info *ast.FileInfo, schema *fbs.Schema
 		if structInfo.HasMethod("Finish" + structInfo.Name + "Buffer") {
 			schema.RootTypes = append(schema.RootTypes, structInfo.Name)
 		}
+		table := sc.createTable(structInfo)
+		if len(table.Fields) == 0 {
+			sc.logger.Debug("no fields found in table", "table", structInfo.Name)
+			continue
+		}
 		schema.Tables = append(schema.Tables, table)
+	}
+}
+
+func sortByBuilderParametersOrder(structInfo *ast.StructInfo, fields []*ast.FieldInfo, method *ast.MethodInfo) func(i, j int) bool {
+	toKey := func(name string) string {
+		return strings.ReplaceAll(strings.ToLower(name), "_", "")
+	}
+
+	methodParamMap := make(map[string]int)
+	for i, param := range method.ParameterNames {
+		paramName := param
+		paramType := method.ParameterTypes[i]
+		// Remove the "Offset" suffix from the parameter name. It is used for vectors.
+		if strings.HasSuffix(paramName, "Offset") && strings.Contains(paramType, "Offset") {
+			paramName = paramName[:len(paramName)-6]
+		}
+		methodParamMap[toKey(paramName)] = i
+	}
+	return func(right, left int) bool {
+		fieldLeftName := fields[left].Name
+		fieldRightName := fields[right].Name
+		if structInfo.IsVector(fieldLeftName, fields[left].Type) {
+			vectorFieldName := structInfo.ToVectorFieldName(fieldLeftName)
+			fieldLeftName = vectorFieldName
+		}
+		if structInfo.IsVector(fieldRightName, fields[right].Type) {
+			vectorFieldName := structInfo.ToVectorFieldName(fieldRightName)
+			fieldRightName = vectorFieldName
+		}
+
+		leftPos, leftExists := methodParamMap[toKey(fieldLeftName)]
+		rightPos, rightExists := methodParamMap[toKey(fieldRightName)]
+
+		// Fields not in method parameters go to the end
+		if !leftExists && !rightExists {
+			return false // maintain original order for fields not in params
+		}
+		if !leftExists {
+			return false // left goes after right
+		}
+		if !rightExists {
+			return true // right goes after left
+		}
+
+		// Both exist in parameters, sort by their position in the parameter list
+		return leftPos > rightPos
 	}
 }
 
@@ -93,15 +140,26 @@ func (sc *SchemaConverter) createTable(structInfo *ast.StructInfo) fbs.Table {
 		Name: structInfo.Name,
 	}
 
-	sort.Slice(structInfo.Fields, sortByRVA(structInfo.Fields))
-	for _, fieldData := range structInfo.Fields {
+	// Filter the invalid fields first
+	validFields := make([]*ast.FieldInfo, 0, len(structInfo.Fields))
+	for _, field := range structInfo.Fields {
 		// We need to filter out the fields that are not public and are overridden by properties
-		sc.logger.Debug("Field", "name", fieldData.Name, "modifiers", fieldData.Modifiers, "type", fieldData.Type)
-		if !structInfo.HasMethod("Add"+fieldData.Name) && !structInfo.IsVector(fieldData.Name, fieldData.Type) {
-			sc.logger.Debug("Field is not an add method", "name", fieldData.Name, "modifiers", fieldData.Modifiers, "type", fieldData.Type)
+		sc.logger.Debug("Field", "name", field.Name, "modifiers", field.Modifiers, "type", field.Type)
+		if !structInfo.HasMethod("Add"+field.Name) && !structInfo.IsVector(field.Name, field.Type) {
+			sc.logger.Debug("Field is not an add method", "name", field.Name, "modifiers", field.Modifiers, "type", field.Type)
 			continue
 		}
-		field := sc.createField(structInfo, fieldData.Name, fieldData.Type)
+		validFields = append(validFields, field)
+	}
+
+	sortFunc := sortByRVA(validFields)
+	if method, err := structInfo.GetMethod("Create" + structInfo.Name); err == nil {
+		sc.logger.Info("Create" + structInfo.Name + " method found, sorting by builder parameters order")
+		sortFunc = sortByBuilderParametersOrder(structInfo, validFields, method)
+	}
+	sort.Slice(validFields, sortFunc)
+	for _, field := range validFields {
+		field := sc.createField(structInfo, field.Name, field.Type)
 		if table.FieldExists(field.Name) {
 			field.Name = field.Name + "_" + utils.Checksum(field.Name+field.Type)
 		}
