@@ -35,7 +35,6 @@ type FieldInfo struct {
 	Modifiers []string
 	Name      string
 	Type      string
-	Accessors map[string]map[string]string
 }
 
 type MethodInfo struct {
