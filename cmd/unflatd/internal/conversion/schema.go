@@ -114,7 +114,7 @@ func (sc *SchemaConverter) createField(structInfo *ast.StructInfo, fieldName, fi
 func (sc *SchemaConverter) processEnums(info *ast.FileInfo, schema *fbs.Schema) {
 	for _, enumInfo := range info.Enums {
 		if info.Namespace != "FlatData" {
-			sc.logger.Debug("enum is not in FlatData namespace", "enum", enumInfo.Name)
+			sc.logger.Debug("enum is not in FlatData namespace", "enum", enumInfo.Name, "namespace", info.Namespace)
 			continue
 		}
 		dataType := ConvertFieldType(enumInfo.BaseType)
