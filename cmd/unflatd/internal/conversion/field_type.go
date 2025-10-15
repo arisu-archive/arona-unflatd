@@ -8,6 +8,13 @@ import (
 	"github.com/arisu-archive/arona-unflatd/pkg/fbs"
 )
 
+func ExtractNamespace(fieldType string) string {
+	if idx := strings.LastIndex(fieldType, "."); idx != -1 {
+		return fieldType[:idx]
+	}
+	return ""
+}
+
 func ConvertFieldType(fieldType string) string {
 	// Handle Nullable<T>
 	if strings.HasPrefix(fieldType, "Nullable<") {

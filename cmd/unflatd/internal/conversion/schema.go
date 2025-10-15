@@ -91,23 +91,31 @@ func (sc *SchemaConverter) createTable(structInfo *ast.StructInfo) fbs.Table {
 }
 
 func (sc *SchemaConverter) createField(structInfo *ast.StructInfo, fieldName, fieldType string) fbs.Field {
+	fieldNamespace := ExtractNamespace(fieldType)
 	if structInfo.IsVector(fieldName, fieldType) {
 		vectorFieldName := structInfo.ToVectorFieldName(fieldName)
 		vectorFieldType, err := structInfo.GetVectorFieldType(vectorFieldName)
 		if err != nil {
 			// Since this is called from within a loop, we'll log the error and continue
 			sc.logger.Error("failed to get vector field type", "error", err)
-			return fbs.Field{Name: utils.ToSnakeCase(vectorFieldName), Type: fieldType}
+			return fbs.Field{
+				Name:      utils.ToSnakeCase(vectorFieldName),
+				Namespace: fieldNamespace,
+				Type:      ConvertFieldType(fieldType),
+			}
 		}
+		vectorFieldNamespace := ExtractNamespace(vectorFieldType)
 		return fbs.Field{
-			Name:    utils.ToSnakeCase(vectorFieldName),
-			Type:    ConvertFieldType(vectorFieldType),
-			IsArray: true,
+			Name:      utils.ToSnakeCase(vectorFieldName),
+			Namespace: vectorFieldNamespace,
+			Type:      ConvertFieldType(vectorFieldType),
+			IsArray:   true,
 		}
 	}
 	return fbs.Field{
-		Name: utils.ToSnakeCase(fieldName),
-		Type: ConvertFieldType(fieldType),
+		Name:      utils.ToSnakeCase(fieldName),
+		Namespace: fieldNamespace,
+		Type:      ConvertFieldType(fieldType),
 	}
 }
 

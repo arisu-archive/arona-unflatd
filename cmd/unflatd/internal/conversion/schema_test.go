@@ -68,6 +68,22 @@ var _ = Describe("SchemaConverter", func() {
 									Modifiers: []string{"public"},
 								},
 							},
+							Methods: map[string]*ast.MethodInfo{
+								"AddId": {
+									Name:           "AddId",
+									Modifiers:      []string{"public", "static"},
+									ReturnType:     "void",
+									ParameterNames: []string{"builder", "id"},
+									ParameterTypes: []string{"FlatBufferBuilder", "int"},
+								},
+								"AddName": {
+									Name:           "AddName",
+									Modifiers:      []string{"public", "static"},
+									ReturnType:     "void",
+									ParameterNames: []string{"builder", "nameOffset"},
+									ParameterTypes: []string{"FlatBufferBuilder", "StringOffset"},
+								},
+							},
 						},
 					},
 				}

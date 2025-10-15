@@ -9,6 +9,28 @@ import (
 )
 
 var _ = Describe("FieldType", func() {
+	Context("ExtractNamespaceType", func() {
+		It("should extract namespace and name correctly", func() {
+			result := conversion.ExtractNamespace("MyNamespace.MyType")
+			Expect(result).To(Equal("MyNamespace"))
+		})
+
+		It("should handle types without namespace", func() {
+			result := conversion.ExtractNamespace("MyType")
+			Expect(result).To(Equal(""))
+		})
+
+		It("should handle empty string", func() {
+			result := conversion.ExtractNamespace("")
+			Expect(result).To(Equal(""))
+		})
+
+		It("should handle multiple dots in type", func() {
+			result := conversion.ExtractNamespace("A.B.C.MyType")
+			Expect(result).To(Equal("A.B.C"))
+		})
+	})
+
 	Context("ConvertFieldType", func() {
 		It("should handle nullable types", func() {
 			result := conversion.ConvertFieldType("Nullable<int>")
