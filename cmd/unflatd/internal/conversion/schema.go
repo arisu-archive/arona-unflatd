@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/arisu-archive/arona-unflatd/cmd/unflatd/internal/utils"
 	"github.com/arisu-archive/arona-unflatd/pkg/fbs"
@@ -62,52 +61,6 @@ func (sc *SchemaConverter) processStructs(info *ast.FileInfo, schema *fbs.Schema
 	}
 }
 
-func sortByBuilderParametersOrder(structInfo *ast.StructInfo, fields []*ast.FieldInfo, method *ast.MethodInfo) func(i, j int) bool {
-	toKey := func(name string) string {
-		return strings.ReplaceAll(strings.ToLower(name), "_", "")
-	}
-
-	methodParamMap := make(map[string]int)
-	for i, param := range method.ParameterNames {
-		paramName := param
-		paramType := method.ParameterTypes[i]
-		// Remove the "Offset" suffix from the parameter name. It is used for vectors.
-		if strings.HasSuffix(paramName, "Offset") && strings.Contains(paramType, "Offset") {
-			paramName = paramName[:len(paramName)-6]
-		}
-		methodParamMap[toKey(paramName)] = i
-	}
-	return func(right, left int) bool {
-		fieldLeftName := fields[left].Name
-		fieldRightName := fields[right].Name
-		if structInfo.IsVector(fieldLeftName, fields[left].Type) {
-			vectorFieldName := structInfo.ToVectorFieldName(fieldLeftName)
-			fieldLeftName = vectorFieldName
-		}
-		if structInfo.IsVector(fieldRightName, fields[right].Type) {
-			vectorFieldName := structInfo.ToVectorFieldName(fieldRightName)
-			fieldRightName = vectorFieldName
-		}
-
-		leftPos, leftExists := methodParamMap[toKey(fieldLeftName)]
-		rightPos, rightExists := methodParamMap[toKey(fieldRightName)]
-
-		// Fields not in method parameters go to the end
-		if !leftExists && !rightExists {
-			return false // maintain original order for fields not in params
-		}
-		if !leftExists {
-			return false // left goes after right
-		}
-		if !rightExists {
-			return true // right goes after left
-		}
-
-		// Both exist in parameters, sort by their position in the parameter list
-		return leftPos > rightPos
-	}
-}
-
 func sortByRVA(fields []*ast.FieldInfo) func(i, j int) bool {
 	return func(i, j int) bool {
 		if len(fields[i].Accessors) == 0 {
@@ -127,7 +80,7 @@ func sortByRVA(fields []*ast.FieldInfo) func(i, j int) bool {
 		if err != nil {
 			return false
 		}
-		return rvaI < rvaJ
+		return rvaI > rvaJ
 	}
 }
 
@@ -152,12 +105,7 @@ func (sc *SchemaConverter) createTable(structInfo *ast.StructInfo) fbs.Table {
 		validFields = append(validFields, field)
 	}
 
-	sortFunc := sortByRVA(validFields)
-	if method, err := structInfo.GetMethod("Create" + structInfo.Name); err == nil {
-		sc.logger.Info("Create" + structInfo.Name + " method found, sorting by builder parameters order")
-		sortFunc = sortByBuilderParametersOrder(structInfo, validFields, method)
-	}
-	sort.Slice(validFields, sortFunc)
+	sort.Slice(validFields, sortByRVA(validFields))
 	for _, field := range validFields {
 		field := sc.createField(structInfo, field.Name, field.Type)
 		if table.FieldExists(field.Name) {
