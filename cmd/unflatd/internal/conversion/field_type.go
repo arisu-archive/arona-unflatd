@@ -13,6 +13,10 @@ func ConvertFieldType(fieldType string) string {
 	if strings.HasPrefix(fieldType, "Nullable<") {
 		return strings.TrimPrefix(strings.TrimSuffix(fieldType, ">"), "Nullable<")
 	}
+	// Handle Nullable types like "int?", "long?", etc.
+	if strings.HasSuffix(fieldType, "?") {
+		return strings.TrimSuffix(fieldType, "?")
+	}
 
 	if fieldType == "sbyte" {
 		return "byte"
