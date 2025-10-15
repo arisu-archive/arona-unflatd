@@ -30,7 +30,14 @@ const StructParsingQuery = `
 		(identifier) @interface) @struct_base_list
 )
 
-; Group4: Struct methods
+; Group4: Struct fields
+(property_declaration
+  (modifier)* @field_modifier
+  type: (_) @field_type
+  name: (identifier) @field_name
+)
+
+; Group5: Struct methods
 (method_declaration
 	(modifier)* @method_modifier
 	returns: (_) @method_return_type
