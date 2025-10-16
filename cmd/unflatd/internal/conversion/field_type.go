@@ -36,7 +36,7 @@ func ConvertEnumValues(dataType string, values map[string]string) []fbs.EnumValu
 	// sbyte,byte,short,ushort,int,uint,long,ulong.
 	converted := make([]fbs.EnumValue, 0)
 	switch dataType {
-	case "int", "short", "sbyte":
+	case "int", "short", "sbyte", "long":
 		for k, v := range values {
 			if val, err := strconv.ParseInt(v, 10, 64); err == nil {
 				converted = append(converted, fbs.EnumValue{

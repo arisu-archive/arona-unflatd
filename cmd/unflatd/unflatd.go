@@ -155,9 +155,9 @@ func fixImports(schemas map[string]*fbs.Schema) {
 		for _, table := range schema.Tables {
 			for _, field := range table.Fields {
 				if field.Namespace != "" {
-					plainType := strings.TrimPrefix(field.Type, field.Namespace+".")
-					imports[fmt.Sprintf("../%s/%s", strings.ToLower(field.Namespace), plainType)] = struct{}{}
-				} else if !field.IsPrimitive() {
+					field.Type = strings.TrimPrefix(field.Type, field.Namespace+".")
+				}
+				if !field.IsPrimitive() {
 					imports[field.Type] = struct{}{}
 				}
 			}

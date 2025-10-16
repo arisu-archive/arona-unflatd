@@ -90,7 +90,7 @@ func (sc *SchemaConverter) createTable(structInfo *ast.StructInfo) fbs.Table {
 	return table
 }
 
-func (sc *SchemaConverter) createField(structInfo *ast.StructInfo, fieldName, fieldType string) fbs.Field {
+func (sc *SchemaConverter) createField(structInfo *ast.StructInfo, fieldName, fieldType string) *fbs.Field {
 	fieldNamespace := ExtractNamespace(fieldType)
 	if structInfo.IsVector(fieldName, fieldType) {
 		vectorFieldName := structInfo.ToVectorFieldName(fieldName)
@@ -98,21 +98,21 @@ func (sc *SchemaConverter) createField(structInfo *ast.StructInfo, fieldName, fi
 		if err != nil {
 			// Since this is called from within a loop, we'll log the error and continue
 			sc.logger.Error("failed to get vector field type", "error", err)
-			return fbs.Field{
+			return &fbs.Field{
 				Name:      utils.ToSnakeCase(vectorFieldName),
 				Namespace: fieldNamespace,
 				Type:      ConvertFieldType(fieldType),
 			}
 		}
 		vectorFieldNamespace := ExtractNamespace(vectorFieldType)
-		return fbs.Field{
+		return &fbs.Field{
 			Name:      utils.ToSnakeCase(vectorFieldName),
 			Namespace: vectorFieldNamespace,
 			Type:      ConvertFieldType(vectorFieldType),
 			IsArray:   true,
 		}
 	}
-	return fbs.Field{
+	return &fbs.Field{
 		Name:      utils.ToSnakeCase(fieldName),
 		Namespace: fieldNamespace,
 		Type:      ConvertFieldType(fieldType),
@@ -121,10 +121,6 @@ func (sc *SchemaConverter) createField(structInfo *ast.StructInfo, fieldName, fi
 
 func (sc *SchemaConverter) processEnums(info *ast.FileInfo, schema *fbs.Schema) {
 	for _, enumInfo := range info.Enums {
-		if info.Namespace != "FlatData" {
-			sc.logger.Debug("enum is not in FlatData namespace", "enum", enumInfo.Name, "namespace", info.Namespace)
-			continue
-		}
 		dataType := ConvertFieldType(enumInfo.BaseType)
 		schema.Enums = append(schema.Enums, fbs.Enum{
 			Name:     enumInfo.Name,

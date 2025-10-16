@@ -10,7 +10,7 @@ type Schema struct {
 
 type Table struct {
 	Name   string
-	Fields []Field
+	Fields []*Field
 }
 
 func (t Table) FieldExists(name string) bool {
