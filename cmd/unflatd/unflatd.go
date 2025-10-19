@@ -70,6 +70,11 @@ func (c *Command) Command() *cobra.Command {
 	return c.cmd
 }
 
+type ProcessedFile struct {
+	Path   string
+	Schema *fbs.Schema
+}
+
 func (c *Command) Execute(_ *cobra.Command, _ []string) error {
 	c.logger.Debug("Decompiling C# code", "input", c.opts.input, "output", c.opts.output, "namespace", c.opts.namespace)
 	// Create output directory if not exists
@@ -87,7 +92,7 @@ func (c *Command) Execute(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create parser: %w", err)
 	}
-	schemas := make(map[string]*fbs.Schema)
+	processedFiles := make([]ProcessedFile, 0)
 	for _, file := range files {
 		fullPath := filepath.Join(c.opts.input, file)
 		c.logger.Info("Processing file", "file", fullPath)
@@ -105,42 +110,43 @@ func (c *Command) Execute(_ *cobra.Command, _ []string) error {
 		}
 		c.logger.Debug("FlatBuffer schema", "fbs", schema)
 		c.logger.Info("Generated FlatBuffer schema", "file", fullPath)
-		baseFile := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
-		outputPath := filepath.Join(c.opts.output, baseFile+".fbs")
 		// Mark the reference count of each schema.
-		schemas[outputPath] = schema
+		processedFiles = append(processedFiles, ProcessedFile{Path: fullPath, Schema: schema})
 	}
 
 	// Post processing: Fixing the imports
-	fixImports(schemas)
+	fixImports(processedFiles)
 	refCount := make(fbs.SchemaReference)
-	for _, schema := range schemas {
-		for _, imp := range schema.Imports {
-			refCount[imp] = append(refCount[imp], schema)
+	for _, file := range processedFiles {
+		for _, imp := range file.Schema.Imports {
+			refCount[imp] = append(refCount[imp], file.Schema)
 		}
 	}
 
 	// Remove the schemas that are not referenced and not equal to the namespace.
-	for path, schema := range schemas {
+	var filteredFiles []ProcessedFile
+	for _, file := range processedFiles {
 		// No reference and not equal to the namespace
-		schemaFile := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
-		if !refCount.HasNamespace(schemaFile, c.opts.namespace) && schema.Namespace != c.opts.namespace {
-			c.logger.Debug("Removing dangling schema", "path", path, "namespace", schema.Namespace)
-			delete(schemas, path)
+		schemaFile := strings.TrimSuffix(filepath.Base(file.Path), filepath.Ext(file.Path))
+		if !refCount.HasNamespace(schemaFile, c.opts.namespace) && file.Schema.Namespace != c.opts.namespace {
+			c.logger.Debug("Removing dangling schema", "path", file.Path, "namespace", file.Schema.Namespace)
 			continue
 		}
 
-		c.logger.Debug("This is a valid schema", "path", path, "namespace", schema.Namespace)
+		c.logger.Debug("This is a valid schema", "path", file.Path, "namespace", file.Schema.Namespace)
 		// Force the namespace to the specified namespace (As go flatc cannot handle flatbuffers without namespace)
-		schema.Namespace = c.opts.namespace
+		file.Schema.Namespace = c.opts.namespace
+		filteredFiles = append(filteredFiles, file)
 	}
 
 	// Write all the schemas to output
-	for outputPath, schema := range schemas {
-		c.logger.Debug("Schema", "schema", schema)
+	for _, file := range filteredFiles {
+		baseFile := strings.TrimSuffix(filepath.Base(file.Path), filepath.Ext(file.Path))
+		outputPath := filepath.Join(c.opts.output, baseFile+".fbs")
+		c.logger.Debug("Schema", "schema", file.Schema)
 		c.logger.Info("Writing FlatBuffer schema", "file", outputPath)
 		v := fbs.NewSchemaVisitor()
-		result := v.VisitSchema(schema)
+		result := v.VisitSchema(file.Schema)
 		c.logger.Debug("Generated FlatBuffer source code", "result", result)
 		if writeErr := os.WriteFile(outputPath, []byte(result), 0o600); writeErr != nil {
 			return fmt.Errorf("failed to write FlatBuffer schema: %w", writeErr)
@@ -149,10 +155,10 @@ func (c *Command) Execute(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-func fixImports(schemas map[string]*fbs.Schema) {
-	for _, schema := range schemas {
+func fixImports(files []ProcessedFile) {
+	for _, file := range files {
 		imports := make(map[string]struct{})
-		for _, table := range schema.Tables {
+		for _, table := range file.Schema.Tables {
 			for _, field := range table.Fields {
 				if field.Namespace != "" {
 					field.Type = strings.TrimPrefix(field.Type, field.Namespace+".")
@@ -164,9 +170,9 @@ func fixImports(schemas map[string]*fbs.Schema) {
 		}
 
 		// Convert unique imports to slice
-		schema.Imports = make([]string, 0, len(imports))
+		file.Schema.Imports = make([]string, 0, len(imports))
 		for imp := range imports {
-			schema.Imports = append(schema.Imports, imp)
+			file.Schema.Imports = append(file.Schema.Imports, imp)
 		}
 	}
 }
