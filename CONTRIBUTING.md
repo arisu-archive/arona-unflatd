@@ -5,7 +5,7 @@ We welcome contributions to AronaUnflatd! Please follow these guidelines to ensu
 ## Development Setup
 
 ### Prerequisites
-- Go 1.22+
+- Go 1.23+
 - GNU Make
 - Tree-sitter CLI
 - ginkgo (test framework)
