@@ -6,7 +6,7 @@ toolchain go1.25.5
 
 require (
 	github.com/bmatcuk/doublestar/v4 v4.9.1
-	github.com/onsi/ginkgo/v2 v2.27.2
+	github.com/onsi/ginkgo/v2 v2.27.3
 	github.com/onsi/gomega v1.38.2
 	github.com/smacker/go-tree-sitter v0.0.0-20240827094217-dd81d9e9be82
 	github.com/spf13/cobra v1.10.2
