@@ -2,7 +2,7 @@ module github.com/arisu-archive/arona-unflatd
 
 go 1.23.12
 
-toolchain go1.25.5
+toolchain go1.26.1
 
 require (
 	github.com/bmatcuk/doublestar/v4 v4.9.1
