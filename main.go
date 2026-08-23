@@ -6,9 +6,7 @@ import (
 	"github.com/arisu-archive/arona-unflatd/cmd/root"
 )
 
-const (
-	version = "0.1.0"
-)
+var version = "dev"
 
 func main() {
 	root.Execute(root.ExecuteOptions{
