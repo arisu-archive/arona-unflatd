@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
@@ -75,7 +76,15 @@ type ProcessedFile struct {
 	Schema *fbs.Schema
 }
 
-func (c *Command) Execute(_ *cobra.Command, _ []string) error {
+func (c *Command) Execute(cobraCmd *cobra.Command, _ []string) error {
+	ctx := cobraCmd.Context()
+	if ctx == nil {
+		return errors.New("command context is nil")
+	}
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("command context: %w", err)
+	}
+
 	c.logger.Debug("Decompiling C# code", "input", c.opts.input, "output", c.opts.output, "namespace", c.opts.namespace)
 	// Create output directory if not exists
 	if err := os.MkdirAll(c.opts.output, 0o700); err != nil {
@@ -86,32 +95,16 @@ func (c *Command) Execute(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to glob input directory: %w", err)
 	}
+	slices.Sort(files)
 	c.logger.Debug("Found files", "count", len(files))
 
 	parser, err := query.NewParser()
 	if err != nil {
 		return fmt.Errorf("failed to create parser: %w", err)
 	}
-	processedFiles := make([]ProcessedFile, 0)
-	for _, file := range files {
-		fullPath := filepath.Join(c.opts.input, file)
-		c.logger.Info("Processing file", "file", fullPath)
-		structs, parseErr := parser.ProcessFile(context.Background(), fullPath)
-		if parseErr != nil {
-			return fmt.Errorf("failed to process file: %w", parseErr)
-		}
-		schema, conversionErr := c.converter.Convert(structs)
-		if conversionErr != nil {
-			if errors.Is(conversionErr, conversion.ErrNoTablesOrEnumsFound) {
-				c.logger.Debug("No tables or enums found in file", "file", fullPath)
-				continue
-			}
-			return fmt.Errorf("failed to convert flatbuffer: %w", conversionErr)
-		}
-		c.logger.Debug("FlatBuffer schema", "fbs", schema)
-		c.logger.Info("Generated FlatBuffer schema", "file", fullPath)
-		// Mark the reference count of each schema.
-		processedFiles = append(processedFiles, ProcessedFile{Path: fullPath, Schema: schema})
+	processedFiles, err := c.processFiles(ctx, files, parser)
+	if err != nil {
+		return err
 	}
 
 	// Post processing: Fixing the imports
@@ -153,6 +146,41 @@ func (c *Command) Execute(_ *cobra.Command, _ []string) error {
 		}
 	}
 	return nil
+}
+
+func (c *Command) processFiles(
+	ctx context.Context,
+	files []string,
+	parser *query.Parser,
+) ([]ProcessedFile, error) {
+	processedFiles := make([]ProcessedFile, 0, len(files))
+	for _, file := range files {
+		if err := ctx.Err(); err != nil {
+			return nil, fmt.Errorf("processing source files: %w", err)
+		}
+
+		fullPath := filepath.Join(c.opts.input, file)
+		c.logger.InfoContext(ctx, "Processing file", "file", fullPath)
+		structs, err := parser.ProcessFile(ctx, fullPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to process file: %w", err)
+		}
+
+		schema, err := c.converter.Convert(structs)
+		if err != nil {
+			if errors.Is(err, conversion.ErrNoTablesOrEnumsFound) {
+				c.logger.DebugContext(ctx, "No tables or enums found in file", "file", fullPath)
+				continue
+			}
+			return nil, fmt.Errorf("failed to convert flatbuffer: %w", err)
+		}
+
+		c.logger.DebugContext(ctx, "FlatBuffer schema", "fbs", schema)
+		c.logger.InfoContext(ctx, "Generated FlatBuffer schema", "file", fullPath)
+		processedFiles = append(processedFiles, ProcessedFile{Path: fullPath, Schema: schema})
+	}
+
+	return processedFiles, nil
 }
 
 func fixImports(files []ProcessedFile) {

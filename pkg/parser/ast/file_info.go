@@ -71,7 +71,7 @@ func (s *StructInfo) HasMethod(methodName string) bool {
 
 func (s *StructInfo) IsVector(fieldName, fieldType string) bool {
 	// First condition: field name is end with "Length" and field type is int
-	if !strings.HasSuffix(fieldName, "Length") && fieldType != "int" {
+	if !strings.HasSuffix(fieldName, "Length") || fieldType != "int" {
 		return false
 	}
 

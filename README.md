@@ -52,19 +52,19 @@ arona-unflatd decompile \
 ### Parsing Pipeline
 
 1. **Lexical Analysis** - Tree-sitter tokenizes C# source
-2. **Syntax Tree Construction** - Builds AST with 50+ node types
-3. **Pattern Matching** - Executes S-expression queries.
-4. **Semantic Analysis** - Resolves type dependencies
-5. **IDL Generation** - Outputs validated .fbs files
+2. **Concrete Syntax Tree Construction** - Builds a tolerant Tree-sitter C# tree
+3. **Pattern Matching** - Extracts relevant declarations with S-expression queries
+4. **Schema Recovery** - Applies FlatBuffers-specific inference rules
+5. **IDL Generation** - Deterministically renders `.fbs` files
 
 ### Key Components
 
 | Component          | Responsibility                          | Tech Stack        |
 |---------------------|-----------------------------------------|-------------------|
 | Parser Engine       | Syntax tree construction                | Tree-sitter C#    |
-| AST Walker          | Pattern matching and node traversal     | Go + C bindings   |
-| Type Resolver       | C# to FBS type conversion               | Custom rule engine|
-| Schema Generator    | IDL formatting and validation           | Template engine   |
+| Declaration Extractor | Query capture and node traversal      | Go + C bindings   |
+| Recovery Rules      | C# pattern to FBS conversion             | Go rules          |
+| Schema Generator    | Deterministic IDL formatting             | Go renderer       |
 
 ## Development
 
@@ -72,9 +72,8 @@ arona-unflatd decompile \
 ```bash
 make tidy    # Format code and clean deps
 make audit   # Run security checks (govulncheck)
-make mocks   # Generate mocks
 make test    # Run tests with coverage
-make bench   # Performance benchmarking
+make build   # Build the CLI into ./tmp/bin
 ```
 
 ## Contributing

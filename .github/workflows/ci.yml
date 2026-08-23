@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: ['1.23.x']
+        go: ['1.26.x']
     steps:
     - name: Checkout code
       uses: actions/checkout@v6
@@ -57,14 +57,14 @@ jobs:
     needs: test
     steps:
     - uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
     - uses: actions/setup-go@v6
       with:
         go-version: '1.26.x'
 
-    - name: Run linter
+    - name: Run quality checks
+      env:
+        LINT_BASE_REV: ${{ github.event.pull_request.base.sha || github.event.before }}
       run: |
-        go run github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.1 run ./... --timeout 5m
-
-    - name: Security audit
-      run: |
-        go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+        make audit GOLANGCI_LINT_FLAGS="--new-from-rev=${LINT_BASE_REV}"

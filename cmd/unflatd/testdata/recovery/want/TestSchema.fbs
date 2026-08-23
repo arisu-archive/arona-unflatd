@@ -1,0 +1,13 @@
+namespace FlatData;
+
+enum TestStatus: int {
+    None = 0,
+    Ready = 1,
+}
+
+table TestSchema {
+    id: int;
+    items: [int];
+}
+
+root_type TestSchema;
