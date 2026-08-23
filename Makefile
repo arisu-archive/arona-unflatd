@@ -5,6 +5,7 @@ BINARY_NAME := arona-unflatd
 GOLANGCI_LINT_VERSION := v2.12.2
 GINKGO_VERSION := v2.28.3
 GOVULNCHECK_VERSION := v1.7.0
+GOLANGCI_LINT_FLAGS ?=
 
 # ==================================================================================== #
 # HELPERS
@@ -47,7 +48,8 @@ audit: export CGO_ENABLED = 1
 audit:
 	go mod verify
 	go vet ./...
-	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${GOLANGCI_LINT_VERSION} run ./...
+	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${GOLANGCI_LINT_VERSION} fmt --diff ./...
+	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${GOLANGCI_LINT_VERSION} run ${GOLANGCI_LINT_FLAGS} ./...
 	go run golang.org/x/vuln/cmd/govulncheck@${GOVULNCHECK_VERSION} ./...
 
 # ==================================================================================== #

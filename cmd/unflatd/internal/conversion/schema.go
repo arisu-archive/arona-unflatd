@@ -31,7 +31,7 @@ func (sc *SchemaConverter) Convert(info *ast.FileInfo) (*fbs.Schema, error) {
 	}
 
 	sc.processStructs(info, schema)
-	if err := sc.processEnums(info, schema); err != nil {
+	if err := processEnums(info, schema); err != nil {
 		return nil, err
 	}
 	if len(schema.Tables) == 0 && len(schema.Enums) == 0 {
@@ -125,7 +125,7 @@ func (sc *SchemaConverter) createField(structInfo *ast.StructInfo, fieldName, fi
 	}
 }
 
-func (sc *SchemaConverter) processEnums(info *ast.FileInfo, schema *fbs.Schema) error {
+func processEnums(info *ast.FileInfo, schema *fbs.Schema) error {
 	for _, name := range slices.Sorted(maps.Keys(info.Enums)) {
 		enumInfo := info.Enums[name]
 		dataType := ConvertFieldType(enumInfo.BaseType)

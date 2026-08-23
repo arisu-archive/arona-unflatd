@@ -1,8 +1,9 @@
 package conversion
 
 import (
+	"cmp"
 	"fmt"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -58,17 +59,25 @@ func ConvertEnumValues(dataType string, values map[string]string) ([]fbs.EnumVal
 	default:
 		return nil, fmt.Errorf("unsupported enum type %q", dataType)
 	}
-	// Sort the values by value. As the value is any, we need to convert it to the correct type.
-	// We need to use reflection to get the type of the value.
-	sort.Slice(converted, func(i, j int) bool {
-		switch v := converted[i].Value.(type) {
-		case int64:
-			return v < converted[j].Value.(int64)
-		case uint64:
-			return v < converted[j].Value.(uint64)
-		default:
-			return false
-		}
-	})
+	slices.SortFunc(converted, compareEnumValues)
 	return converted, nil
+}
+
+func compareEnumValues(left, right fbs.EnumValue) int {
+	switch leftValue := left.Value.(type) {
+	case int64:
+		rightValue, ok := right.Value.(int64)
+		if !ok {
+			return 0
+		}
+		return cmp.Compare(leftValue, rightValue)
+	case uint64:
+		rightValue, ok := right.Value.(uint64)
+		if !ok {
+			return 0
+		}
+		return cmp.Compare(leftValue, rightValue)
+	default:
+		return 0
+	}
 }
