@@ -35,3 +35,4 @@ config.prod.yaml
 # Coverage files
 coverage/*
 !coverage/.gitkeep
+output/*

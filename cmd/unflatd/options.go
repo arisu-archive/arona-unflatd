@@ -1,6 +1,7 @@
 package unflatd
 
 type Options struct {
-	input  string
-	output string
+	input     string
+	output    string
+	namespace string
 }

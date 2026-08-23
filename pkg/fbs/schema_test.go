@@ -32,7 +32,7 @@ var _ = Describe("Schema", func() {
 				Tables: []fbs.Table{
 					{
 						Name: "TestTable",
-						Fields: []fbs.Field{
+						Fields: []*fbs.Field{
 							{Name: "id", Type: "int"},
 							{Name: "name", Type: "string"},
 							{Name: "items", Type: "Item", IsArray: true},

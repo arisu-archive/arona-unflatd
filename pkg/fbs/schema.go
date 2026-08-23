@@ -10,7 +10,7 @@ type Schema struct {
 
 type Table struct {
 	Name   string
-	Fields []Field
+	Fields []*Field
 }
 
 func (t Table) FieldExists(name string) bool {
@@ -23,9 +23,10 @@ func (t Table) FieldExists(name string) bool {
 }
 
 type Field struct {
-	Name    string
-	Type    string
-	IsArray bool
+	Name      string
+	Namespace string
+	Type      string
+	IsArray   bool
 }
 
 type Enum struct {

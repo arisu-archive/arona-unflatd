@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
@@ -48,6 +49,13 @@ func NewCommand(logger *slog.Logger) *Command {
 		"",
 		"Output directory for the generated FlatBuffer schema",
 	)
+	cobraCmd.Flags().StringVarP(
+		&unflatd.opts.namespace,
+		"namespace",
+		"n",
+		"FlatData",
+		"Filter out the mismatched namespace in the generated FlatBuffer schema",
+	)
 	if err := cobraCmd.MarkFlagRequired("input"); err != nil {
 		panic("failed to mark input flag as required: " + err.Error())
 	}
@@ -63,8 +71,21 @@ func (c *Command) Command() *cobra.Command {
 	return c.cmd
 }
 
-func (c *Command) Execute(_ *cobra.Command, _ []string) error {
-	c.logger.Debug("Decompiling C# code", "input", c.opts.input, "output", c.opts.output)
+type ProcessedFile struct {
+	Path   string
+	Schema *fbs.Schema
+}
+
+func (c *Command) Execute(cobraCmd *cobra.Command, _ []string) error {
+	ctx := cobraCmd.Context()
+	if ctx == nil {
+		return errors.New("command context is nil")
+	}
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("command context: %w", err)
+	}
+
+	c.logger.Debug("Decompiling C# code", "input", c.opts.input, "output", c.opts.output, "namespace", c.opts.namespace)
 	// Create output directory if not exists
 	if err := os.MkdirAll(c.opts.output, 0o700); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
@@ -74,43 +95,51 @@ func (c *Command) Execute(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to glob input directory: %w", err)
 	}
+	slices.Sort(files)
 	c.logger.Debug("Found files", "count", len(files))
 
 	parser, err := query.NewParser()
 	if err != nil {
 		return fmt.Errorf("failed to create parser: %w", err)
 	}
-	schemas := make(map[string]*fbs.Schema)
-	for _, file := range files {
-		fullPath := filepath.Join(c.opts.input, file)
-		c.logger.Info("Processing file", "file", fullPath)
-		structs, parseErr := parser.ProcessFile(context.Background(), fullPath)
-		if parseErr != nil {
-			return fmt.Errorf("failed to process file: %w", parseErr)
-		}
-		schema, conversionErr := c.converter.Convert(structs)
-		if conversionErr != nil {
-			if errors.Is(conversionErr, conversion.ErrNoTablesOrEnumsFound) {
-				c.logger.Warn("No tables or enums found in file", "file", fullPath)
-				continue
-			}
-			return fmt.Errorf("failed to convert flatbuffer: %w", conversionErr)
-		}
-		c.logger.Debug("FlatBuffer schema", "fbs", schema)
-		c.logger.Info("Generated FlatBuffer schema", "file", fullPath)
-		baseFile := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
-		outputPath := filepath.Join(c.opts.output, baseFile+".fbs")
-		schemas[outputPath] = schema
+	processedFiles, err := c.processFiles(ctx, files, parser)
+	if err != nil {
+		return err
 	}
 
 	// Post processing: Fixing the imports
-	fixImports(schemas)
+	fixImports(processedFiles)
+	refCount := make(fbs.SchemaReference)
+	for _, file := range processedFiles {
+		for _, imp := range file.Schema.Imports {
+			refCount[imp] = append(refCount[imp], file.Schema)
+		}
+	}
+
+	// Remove the schemas that are not referenced and not equal to the namespace.
+	var filteredFiles []ProcessedFile
+	for _, file := range processedFiles {
+		// No reference and not equal to the namespace
+		schemaFile := strings.TrimSuffix(filepath.Base(file.Path), filepath.Ext(file.Path))
+		if !refCount.HasNamespace(schemaFile, c.opts.namespace) && file.Schema.Namespace != c.opts.namespace {
+			c.logger.Debug("Removing dangling schema", "path", file.Path, "namespace", file.Schema.Namespace)
+			continue
+		}
+
+		c.logger.Debug("This is a valid schema", "path", file.Path, "namespace", file.Schema.Namespace)
+		// Force the namespace to the specified namespace (As go flatc cannot handle flatbuffers without namespace)
+		file.Schema.Namespace = c.opts.namespace
+		filteredFiles = append(filteredFiles, file)
+	}
 
 	// Write all the schemas to output
-	for outputPath, schema := range schemas {
+	for _, file := range filteredFiles {
+		baseFile := strings.TrimSuffix(filepath.Base(file.Path), filepath.Ext(file.Path))
+		outputPath := filepath.Join(c.opts.output, baseFile+".fbs")
+		c.logger.Debug("Schema", "schema", file.Schema)
 		c.logger.Info("Writing FlatBuffer schema", "file", outputPath)
 		v := fbs.NewSchemaVisitor()
-		result := v.VisitSchema(schema)
+		result := v.VisitSchema(file.Schema)
 		c.logger.Debug("Generated FlatBuffer source code", "result", result)
 		if writeErr := os.WriteFile(outputPath, []byte(result), 0o600); writeErr != nil {
 			return fmt.Errorf("failed to write FlatBuffer schema: %w", writeErr)
@@ -119,11 +148,49 @@ func (c *Command) Execute(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-func fixImports(schemas map[string]*fbs.Schema) {
-	for _, schema := range schemas {
+func (c *Command) processFiles(
+	ctx context.Context,
+	files []string,
+	parser *query.Parser,
+) ([]ProcessedFile, error) {
+	processedFiles := make([]ProcessedFile, 0, len(files))
+	for _, file := range files {
+		if err := ctx.Err(); err != nil {
+			return nil, fmt.Errorf("processing source files: %w", err)
+		}
+
+		fullPath := filepath.Join(c.opts.input, file)
+		c.logger.InfoContext(ctx, "Processing file", "file", fullPath)
+		structs, err := parser.ProcessFile(ctx, fullPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to process file: %w", err)
+		}
+
+		schema, err := c.converter.Convert(structs)
+		if err != nil {
+			if errors.Is(err, conversion.ErrNoTablesOrEnumsFound) {
+				c.logger.DebugContext(ctx, "No tables or enums found in file", "file", fullPath)
+				continue
+			}
+			return nil, fmt.Errorf("failed to convert flatbuffer: %w", err)
+		}
+
+		c.logger.DebugContext(ctx, "FlatBuffer schema", "fbs", schema)
+		c.logger.InfoContext(ctx, "Generated FlatBuffer schema", "file", fullPath)
+		processedFiles = append(processedFiles, ProcessedFile{Path: fullPath, Schema: schema})
+	}
+
+	return processedFiles, nil
+}
+
+func fixImports(files []ProcessedFile) {
+	for _, file := range files {
 		imports := make(map[string]struct{})
-		for _, table := range schema.Tables {
+		for _, table := range file.Schema.Tables {
 			for _, field := range table.Fields {
+				if field.Namespace != "" {
+					field.Type = strings.TrimPrefix(field.Type, field.Namespace+".")
+				}
 				if !field.IsPrimitive() {
 					imports[field.Type] = struct{}{}
 				}
@@ -131,9 +198,9 @@ func fixImports(schemas map[string]*fbs.Schema) {
 		}
 
 		// Convert unique imports to slice
-		schema.Imports = make([]string, 0, len(imports))
+		file.Schema.Imports = make([]string, 0, len(imports))
 		for imp := range imports {
-			schema.Imports = append(schema.Imports, imp)
+			file.Schema.Imports = append(file.Schema.Imports, imp)
 		}
 	}
 }

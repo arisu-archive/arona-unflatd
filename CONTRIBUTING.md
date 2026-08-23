@@ -5,14 +5,13 @@ We welcome contributions to AronaUnflatd! Please follow these guidelines to ensu
 ## Development Setup
 
 ### Prerequisites
-- Go 1.22+
+- Go 1.25+
 - GNU Make
-- Tree-sitter CLI
-- ginkgo (test framework)
+- A POSIX-compatible shell (Git Bash works on Windows)
 
 ```bash
-# Clone with submodules
-git clone --recurse-submodules https://github.com/arisu-archive/arona-unflatd.git
+# Clone and install pinned development tools
+git clone https://github.com/arisu-archive/arona-unflatd.git
 cd arona-unflatd
 make prepare
 ```
@@ -22,7 +21,7 @@ make prepare
 ### Style Guidelines
 1. **Formatting**:
    ```bash
-   make tidy  # Runs gofmt + goimports
+   make tidy  # Runs gofmt + go mod tidy
    ```
 2. **Linting**:
    ```bash
@@ -49,7 +48,7 @@ make test  # Runs all tests with coverage
 ```
 
 **Requirements**:
-- 100% coverage for new code
+- Add a regression test for every behavior change and bug fix
 - BDD-style tests using Ginkgo/Gomega
 - Table-driven tests for complex logic
 
@@ -68,7 +67,7 @@ Describe("Schema Conversion", func() {
 
 - Use `testdata/` directory for golden files
 - Compare generated schemas against expected output
-- Run fuzz tests for parser components
+- Add parser fixtures for malformed or unusual decompiler output
 
 ## Pull Request Process
 
@@ -105,7 +104,6 @@ Describe("Schema Conversion", func() {
 
 1. **Vulnerability Reporting**:
    - Disclose via GitHub Security Advisories
-   - Use project's PGP key for sensitive reports
 
 2. **Dependencies**:
    ```bash

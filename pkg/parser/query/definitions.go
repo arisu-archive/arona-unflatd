@@ -2,10 +2,12 @@ package query
 
 const StructParsingQuery = `
 ; Group1: Namespace
-(
+[
   (file_scoped_namespace_declaration
-    (identifier) @namespace) @namespace_group
-)
+    name: [(identifier) (qualified_name)] @namespace)
+  (namespace_declaration
+    name: [(identifier) (qualified_name)] @namespace)
+]
 
 ; Group2: Enum
 (
@@ -33,13 +35,6 @@ const StructParsingQuery = `
   (modifier)* @field_modifier
   type: (_) @field_type
   name: (identifier) @field_name
-  accessors: (accessor_list
-    (accessor_declaration
-      (attribute_list
-        (attribute) @accessor_attribute
-      )*
-    )*
-  )
 )
 
 ; Group5: Struct methods

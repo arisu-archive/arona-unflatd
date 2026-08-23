@@ -21,7 +21,7 @@ var _ = Describe("SchemaVisitor", func() {
 			Tables: []fbs.Table{
 				{
 					Name: "TestTable",
-					Fields: []fbs.Field{
+					Fields: []*fbs.Field{
 						{Name: "id", Type: "int"},
 						{Name: "name", Type: "string"},
 						{Name: "items", Type: "Item", IsArray: true},
@@ -73,6 +73,14 @@ var _ = Describe("SchemaVisitor", func() {
 			Expect(result).To(ContainSubstring(`include "X.fbs";
 include "Y.fbs";
 include "Z.fbs";`))
+		})
+
+		It("should not mutate the schema while sorting imports", func() {
+			schema.Imports = []string{"Z", "X", "Y"}
+
+			visitor.VisitSchema(schema)
+
+			Expect(schema.Imports).To(Equal([]string{"Z", "X", "Y"}))
 		})
 	})
 

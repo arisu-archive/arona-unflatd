@@ -1,9 +1,11 @@
 package unflatd_test
 
 import (
+	"context"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -40,6 +42,7 @@ var _ = Describe("Unflatd", func() {
 
 		// Set required flags via cobra command
 		cobraCmd := cmd.Command()
+		cobraCmd.SetContext(context.Background())
 		err = cobraCmd.Flags().Set("input", inputDir)
 		Expect(err).NotTo(HaveOccurred())
 		err = cobraCmd.Flags().Set("output", outputDir)
@@ -89,6 +92,31 @@ public enum TestEnum
 		})
 	})
 
+	Context("when recovering a generated FlatBuffer type", func() {
+		It("should match the golden schema", func() {
+			goldenCommand := unflatd.NewCommand(logger)
+			cobraCmd := goldenCommand.Command()
+			cobraCmd.SetContext(context.Background())
+			err := cobraCmd.Flags().Set("input", filepath.Join("testdata", "recovery", "input"))
+			Expect(err).NotTo(HaveOccurred())
+			err = cobraCmd.Flags().Set("output", outputDir)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = goldenCommand.Execute(cobraCmd, nil)
+			Expect(err).NotTo(HaveOccurred())
+
+			got, err := os.ReadFile(filepath.Join(outputDir, "TestSchema.fbs"))
+			Expect(err).NotTo(HaveOccurred())
+			want, err := os.ReadFile(filepath.Join("testdata", "recovery", "want", "TestSchema.fbs"))
+			Expect(err).NotTo(HaveOccurred())
+
+			normalize := func(content []byte) string {
+				return strings.TrimRight(strings.ReplaceAll(string(content), "\r\n", "\n"), "\n")
+			}
+			Expect(normalize(got)).To(Equal(normalize(want)))
+		})
+	})
+
 	Context("when input directory doesn't exist", func() {
 		It("should return an error", func() {
 			unflatCmd := unflatd.NewCommand(logger)
@@ -100,6 +128,23 @@ public enum TestEnum
 
 			err := unflatCmd.Execute(unflatCmd.Command(), []string{})
 			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Context("when command context is canceled", func() {
+		It("should stop C# parsing", func() {
+			testFile := filepath.Join(inputDir, "Canceled.cs")
+			err := os.WriteFile(testFile, []byte("namespace FlatData; public enum Canceled { None = 0 }"), 0o600)
+			Expect(err).NotTo(HaveOccurred())
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+			cobraCmd := cmd.Command()
+			cobraCmd.SetContext(ctx)
+
+			err = cmd.Execute(cobraCmd, nil)
+
+			Expect(err).To(MatchError(ContainSubstring("context canceled")))
 		})
 	})
 })

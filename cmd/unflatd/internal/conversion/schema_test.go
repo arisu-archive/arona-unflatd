@@ -45,6 +45,58 @@ var _ = Describe("SchemaConverter", func() {
 			Expect(schema.Enums[0].Name).To(Equal("TestEnum"))
 			Expect(schema.Enums[0].Values).To(HaveLen(3))
 		})
+
+		It("should return enum conversion errors with enum context", func() {
+			fileInfo := &ast.FileInfo{
+				Enums: map[string]*ast.EnumInfo{
+					"Unsupported": {
+						Name:     "Unsupported",
+						BaseType: "float",
+						Keys:     []string{"None"},
+						Values:   []string{"0"},
+					},
+				},
+			}
+
+			schema, err := converter.Convert(fileInfo)
+
+			Expect(err).To(MatchError(ContainSubstring(`convert enum "Unsupported"`)))
+			Expect(schema).To(BeNil())
+		})
+	})
+
+	Context("when declarations come from maps", func() {
+		It("should order tables and enums by name", func() {
+			fileInfo := &ast.FileInfo{
+				Structs: map[string]*ast.StructInfo{
+					"Zulu":  flatbufferStruct("Zulu"),
+					"Alpha": flatbufferStruct("Alpha"),
+					"Mike":  flatbufferStruct("Mike"),
+					"Bravo": flatbufferStruct("Bravo"),
+				},
+				Enums: map[string]*ast.EnumInfo{
+					"ZuluEnum":  enumInfo("ZuluEnum"),
+					"AlphaEnum": enumInfo("AlphaEnum"),
+					"MikeEnum":  enumInfo("MikeEnum"),
+					"BravoEnum": enumInfo("BravoEnum"),
+				},
+			}
+
+			schema, err := converter.Convert(fileInfo)
+			Expect(err).NotTo(HaveOccurred())
+
+			tableNames := make([]string, 0, len(schema.Tables))
+			for _, table := range schema.Tables {
+				tableNames = append(tableNames, table.Name)
+			}
+			Expect(tableNames).To(Equal([]string{"Alpha", "Bravo", "Mike", "Zulu"}))
+
+			enumNames := make([]string, 0, len(schema.Enums))
+			for _, enum := range schema.Enums {
+				enumNames = append(enumNames, enum.Name)
+			}
+			Expect(enumNames).To(Equal([]string{"AlphaEnum", "BravoEnum", "MikeEnum", "ZuluEnum"}))
+		})
 	})
 
 	Context("when converting a file with a struct", func() {
@@ -66,6 +118,22 @@ var _ = Describe("SchemaConverter", func() {
 									Name:      "Name",
 									Type:      "string",
 									Modifiers: []string{"public"},
+								},
+							},
+							Methods: map[string]*ast.MethodInfo{
+								"AddId": {
+									Name:           "AddId",
+									Modifiers:      []string{"public", "static"},
+									ReturnType:     "void",
+									ParameterNames: []string{"builder", "id"},
+									ParameterTypes: []string{"FlatBufferBuilder", "int"},
+								},
+								"AddName": {
+									Name:           "AddName",
+									Modifiers:      []string{"public", "static"},
+									ReturnType:     "void",
+									ParameterNames: []string{"builder", "nameOffset"},
+									ParameterTypes: []string{"FlatBufferBuilder", "StringOffset"},
 								},
 							},
 						},
@@ -100,3 +168,25 @@ var _ = Describe("SchemaConverter", func() {
 		})
 	})
 })
+
+func flatbufferStruct(name string) *ast.StructInfo {
+	return &ast.StructInfo{
+		Name:     name,
+		BaseList: []string{"IFlatbufferObject"},
+		Fields: []*ast.FieldInfo{
+			{Name: "ID", Type: "int", Modifiers: []string{"public"}},
+		},
+		Methods: map[string]*ast.MethodInfo{
+			"AddID": {Name: "AddID"},
+		},
+	}
+}
+
+func enumInfo(name string) *ast.EnumInfo {
+	return &ast.EnumInfo{
+		Name:     name,
+		BaseType: "int",
+		Keys:     []string{"None"},
+		Values:   []string{"0"},
+	}
+}

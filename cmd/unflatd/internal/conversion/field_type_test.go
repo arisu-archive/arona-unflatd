@@ -9,6 +9,28 @@ import (
 )
 
 var _ = Describe("FieldType", func() {
+	Context("ExtractNamespaceType", func() {
+		It("should extract namespace and name correctly", func() {
+			result := conversion.ExtractNamespace("MyNamespace.MyType")
+			Expect(result).To(Equal("MyNamespace"))
+		})
+
+		It("should handle types without namespace", func() {
+			result := conversion.ExtractNamespace("MyType")
+			Expect(result).To(Equal(""))
+		})
+
+		It("should handle empty string", func() {
+			result := conversion.ExtractNamespace("")
+			Expect(result).To(Equal(""))
+		})
+
+		It("should handle multiple dots in type", func() {
+			result := conversion.ExtractNamespace("A.B.C.MyType")
+			Expect(result).To(Equal("A.B.C"))
+		})
+	})
+
 	Context("ConvertFieldType", func() {
 		It("should handle nullable types", func() {
 			result := conversion.ConvertFieldType("Nullable<int>")
@@ -33,7 +55,8 @@ var _ = Describe("FieldType", func() {
 				"First":  "1",
 				"Second": "2",
 			}
-			result := conversion.ConvertEnumValues("int", values)
+			result, err := conversion.ConvertEnumValues("int", values)
+			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(Equal([]fbs.EnumValue{
 				{Name: "None", Value: int64(0)},
 				{Name: "First", Value: int64(1)},
@@ -47,12 +70,20 @@ var _ = Describe("FieldType", func() {
 				"First":  "1",
 				"Second": "2",
 			}
-			result := conversion.ConvertEnumValues("uint", values)
+			result, err := conversion.ConvertEnumValues("uint", values)
+			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(Equal([]fbs.EnumValue{
 				{Name: "None", Value: uint64(0)},
 				{Name: "First", Value: uint64(1)},
 				{Name: "Second", Value: uint64(2)},
 			}))
+		})
+
+		It("should return an error for an unsupported enum type", func() {
+			result, err := conversion.ConvertEnumValues("float", map[string]string{"None": "0"})
+
+			Expect(err).To(MatchError(ContainSubstring(`unsupported enum type "float"`)))
+			Expect(result).To(BeNil())
 		})
 	})
 })

@@ -2,9 +2,10 @@ package conversion
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
-	"sort"
-	"strconv"
+	"maps"
+	"slices"
 
 	"github.com/arisu-archive/arona-unflatd/cmd/unflatd/internal/utils"
 	"github.com/arisu-archive/arona-unflatd/pkg/fbs"
@@ -29,12 +30,10 @@ func (sc *SchemaConverter) Convert(info *ast.FileInfo) (*fbs.Schema, error) {
 		Namespace: info.Namespace,
 	}
 
-	// FIXME: This is a temporary fix to make sure the namespace is set to FlatData
-	if schema.Namespace == "" {
-		schema.Namespace = "FlatData"
-	}
 	sc.processStructs(info, schema)
-	sc.processEnums(info, schema)
+	if err := processEnums(info, schema); err != nil {
+		return nil, err
+	}
 	if len(schema.Tables) == 0 && len(schema.Enums) == 0 {
 		return nil, ErrNoTablesOrEnumsFound
 	}
@@ -42,14 +41,10 @@ func (sc *SchemaConverter) Convert(info *ast.FileInfo) (*fbs.Schema, error) {
 }
 
 func (sc *SchemaConverter) processStructs(info *ast.FileInfo, schema *fbs.Schema) {
-	for _, structInfo := range info.Structs {
-		table := sc.createTable(structInfo)
-		if len(table.Fields) == 0 {
-			sc.logger.Warn("no fields found in table", "table", structInfo.Name)
-			continue
-		}
+	for _, name := range slices.Sorted(maps.Keys(info.Structs)) {
+		structInfo := info.Structs[name]
 		if !utils.Contains(structInfo.BaseList, []string{"IFlatbufferObject"}) {
-			sc.logger.Warn(
+			sc.logger.Debug(
 				"struct is not a flatbuffer type",
 				"struct",
 				structInfo.Name,
@@ -61,30 +56,12 @@ func (sc *SchemaConverter) processStructs(info *ast.FileInfo, schema *fbs.Schema
 		if structInfo.HasMethod("Finish" + structInfo.Name + "Buffer") {
 			schema.RootTypes = append(schema.RootTypes, structInfo.Name)
 		}
+		table := sc.createTable(structInfo)
+		if len(table.Fields) == 0 {
+			sc.logger.Debug("no fields found in table", "table", structInfo.Name)
+			continue
+		}
 		schema.Tables = append(schema.Tables, table)
-	}
-}
-
-func sortByRVA(fields []*ast.FieldInfo) func(i, j int) bool {
-	return func(i, j int) bool {
-		if len(fields[i].Accessors) == 0 {
-			return false
-		}
-		if len(fields[j].Accessors) == 0 {
-			return true
-		}
-		accessorI := fields[i].Accessors["Address"]
-		accessorJ := fields[j].Accessors["Address"]
-		// Convert the RVA to an integer
-		rvaI, err := strconv.ParseInt(accessorI["RVA"], 16, 64)
-		if err != nil {
-			return false
-		}
-		rvaJ, err := strconv.ParseInt(accessorJ["RVA"], 16, 64)
-		if err != nil {
-			return false
-		}
-		return rvaI < rvaJ
 	}
 }
 
@@ -97,17 +74,20 @@ func (sc *SchemaConverter) createTable(structInfo *ast.StructInfo) fbs.Table {
 		Name: structInfo.Name,
 	}
 
-	sort.Slice(structInfo.Fields, sortByRVA(structInfo.Fields))
-	for _, fieldData := range structInfo.Fields {
+	// Filter the invalid fields first
+	validFields := make([]*ast.FieldInfo, 0, len(structInfo.Fields))
+	for _, field := range structInfo.Fields {
 		// We need to filter out the fields that are not public and are overridden by properties
-		if !utils.Contains(fieldData.Modifiers, []string{"public", "static"}) {
+		sc.logger.Debug("Field", "name", field.Name, "modifiers", field.Modifiers, "type", field.Type)
+		if !structInfo.HasMethod("Add"+field.Name) && !structInfo.IsVector(field.Name, field.Type) {
+			sc.logger.Debug("Field is not an add method", "name", field.Name, "modifiers", field.Modifiers, "type", field.Type)
 			continue
 		}
-		if utils.Contains(fieldData.Modifiers, []string{"override"}) {
-			continue
-		}
-		sc.logger.Debug("Field", "name", fieldData.Name, "type", fieldData.Type)
-		field := sc.createField(structInfo, fieldData.Name, fieldData.Type)
+		validFields = append(validFields, field)
+	}
+
+	for _, field := range validFields {
+		field := sc.createField(structInfo, field.Name, field.Type)
 		if table.FieldExists(field.Name) {
 			field.Name = field.Name + "_" + utils.Checksum(field.Name+field.Type)
 		}
@@ -116,38 +96,48 @@ func (sc *SchemaConverter) createTable(structInfo *ast.StructInfo) fbs.Table {
 	return table
 }
 
-func (sc *SchemaConverter) createField(structInfo *ast.StructInfo, fieldName, fieldType string) fbs.Field {
+func (sc *SchemaConverter) createField(structInfo *ast.StructInfo, fieldName, fieldType string) *fbs.Field {
+	fieldNamespace := ExtractNamespace(fieldType)
 	if structInfo.IsVector(fieldName, fieldType) {
 		vectorFieldName := structInfo.ToVectorFieldName(fieldName)
 		vectorFieldType, err := structInfo.GetVectorFieldType(vectorFieldName)
 		if err != nil {
 			// Since this is called from within a loop, we'll log the error and continue
 			sc.logger.Error("failed to get vector field type", "error", err)
-			return fbs.Field{Name: utils.ToSnakeCase(vectorFieldName), Type: fieldType}
+			return &fbs.Field{
+				Name:      utils.ToSnakeCase(vectorFieldName),
+				Namespace: fieldNamespace,
+				Type:      ConvertFieldType(fieldType),
+			}
 		}
-		return fbs.Field{
-			Name:    utils.ToSnakeCase(vectorFieldName),
-			Type:    ConvertFieldType(vectorFieldType),
-			IsArray: true,
+		vectorFieldNamespace := ExtractNamespace(vectorFieldType)
+		return &fbs.Field{
+			Name:      utils.ToSnakeCase(vectorFieldName),
+			Namespace: vectorFieldNamespace,
+			Type:      ConvertFieldType(vectorFieldType),
+			IsArray:   true,
 		}
 	}
-	return fbs.Field{
-		Name: utils.ToSnakeCase(fieldName),
-		Type: ConvertFieldType(fieldType),
+	return &fbs.Field{
+		Name:      utils.ToSnakeCase(fieldName),
+		Namespace: fieldNamespace,
+		Type:      ConvertFieldType(fieldType),
 	}
 }
 
-func (sc *SchemaConverter) processEnums(info *ast.FileInfo, schema *fbs.Schema) {
-	for _, enumInfo := range info.Enums {
-		if info.Namespace != "FlatData" {
-			sc.logger.Warn("enum is not in FlatData namespace", "enum", enumInfo.Name)
-			continue
-		}
+func processEnums(info *ast.FileInfo, schema *fbs.Schema) error {
+	for _, name := range slices.Sorted(maps.Keys(info.Enums)) {
+		enumInfo := info.Enums[name]
 		dataType := ConvertFieldType(enumInfo.BaseType)
+		values, err := ConvertEnumValues(dataType, utils.Zip(enumInfo.Keys, enumInfo.Values))
+		if err != nil {
+			return fmt.Errorf("convert enum %q: %w", enumInfo.Name, err)
+		}
 		schema.Enums = append(schema.Enums, fbs.Enum{
 			Name:     enumInfo.Name,
 			DataType: dataType,
-			Values:   ConvertEnumValues(dataType, utils.Zip(enumInfo.Keys, enumInfo.Values)),
+			Values:   values,
 		})
 	}
+	return nil
 }
