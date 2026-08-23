@@ -74,6 +74,14 @@ var _ = Describe("SchemaVisitor", func() {
 include "Y.fbs";
 include "Z.fbs";`))
 		})
+
+		It("should not mutate the schema while sorting imports", func() {
+			schema.Imports = []string{"Z", "X", "Y"}
+
+			visitor.VisitSchema(schema)
+
+			Expect(schema.Imports).To(Equal([]string{"Z", "X", "Y"}))
+		})
 	})
 
 	Context("when visiting a schema with multiple root types", func() {

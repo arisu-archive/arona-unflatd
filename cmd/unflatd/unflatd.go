@@ -1,12 +1,12 @@
 package unflatd
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
@@ -75,7 +75,15 @@ type ProcessedFile struct {
 	Schema *fbs.Schema
 }
 
-func (c *Command) Execute(_ *cobra.Command, _ []string) error {
+func (c *Command) Execute(cmd *cobra.Command, _ []string) error {
+	ctx := cmd.Context()
+	if ctx == nil {
+		return errors.New("command context is nil")
+	}
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("command context: %w", err)
+	}
+
 	c.logger.Debug("Decompiling C# code", "input", c.opts.input, "output", c.opts.output, "namespace", c.opts.namespace)
 	// Create output directory if not exists
 	if err := os.MkdirAll(c.opts.output, 0o700); err != nil {
@@ -86,6 +94,7 @@ func (c *Command) Execute(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to glob input directory: %w", err)
 	}
+	slices.Sort(files)
 	c.logger.Debug("Found files", "count", len(files))
 
 	parser, err := query.NewParser()
@@ -94,9 +103,12 @@ func (c *Command) Execute(_ *cobra.Command, _ []string) error {
 	}
 	processedFiles := make([]ProcessedFile, 0)
 	for _, file := range files {
+		if err := ctx.Err(); err != nil {
+			return fmt.Errorf("processing source files: %w", err)
+		}
 		fullPath := filepath.Join(c.opts.input, file)
 		c.logger.Info("Processing file", "file", fullPath)
-		structs, parseErr := parser.ProcessFile(context.Background(), fullPath)
+		structs, parseErr := parser.ProcessFile(ctx, fullPath)
 		if parseErr != nil {
 			return fmt.Errorf("failed to process file: %w", parseErr)
 		}

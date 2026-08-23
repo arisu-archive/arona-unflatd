@@ -2,7 +2,10 @@ package conversion
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
+	"maps"
+	"slices"
 
 	"github.com/arisu-archive/arona-unflatd/cmd/unflatd/internal/utils"
 	"github.com/arisu-archive/arona-unflatd/pkg/fbs"
@@ -28,7 +31,9 @@ func (sc *SchemaConverter) Convert(info *ast.FileInfo) (*fbs.Schema, error) {
 	}
 
 	sc.processStructs(info, schema)
-	sc.processEnums(info, schema)
+	if err := sc.processEnums(info, schema); err != nil {
+		return nil, err
+	}
 	if len(schema.Tables) == 0 && len(schema.Enums) == 0 {
 		return nil, ErrNoTablesOrEnumsFound
 	}
@@ -36,7 +41,8 @@ func (sc *SchemaConverter) Convert(info *ast.FileInfo) (*fbs.Schema, error) {
 }
 
 func (sc *SchemaConverter) processStructs(info *ast.FileInfo, schema *fbs.Schema) {
-	for _, structInfo := range info.Structs {
+	for _, name := range slices.Sorted(maps.Keys(info.Structs)) {
+		structInfo := info.Structs[name]
 		if !utils.Contains(structInfo.BaseList, []string{"IFlatbufferObject"}) {
 			sc.logger.Debug(
 				"struct is not a flatbuffer type",
@@ -119,13 +125,19 @@ func (sc *SchemaConverter) createField(structInfo *ast.StructInfo, fieldName, fi
 	}
 }
 
-func (sc *SchemaConverter) processEnums(info *ast.FileInfo, schema *fbs.Schema) {
-	for _, enumInfo := range info.Enums {
+func (sc *SchemaConverter) processEnums(info *ast.FileInfo, schema *fbs.Schema) error {
+	for _, name := range slices.Sorted(maps.Keys(info.Enums)) {
+		enumInfo := info.Enums[name]
 		dataType := ConvertFieldType(enumInfo.BaseType)
+		values, err := ConvertEnumValues(dataType, utils.Zip(enumInfo.Keys, enumInfo.Values))
+		if err != nil {
+			return fmt.Errorf("convert enum %q: %w", enumInfo.Name, err)
+		}
 		schema.Enums = append(schema.Enums, fbs.Enum{
 			Name:     enumInfo.Name,
 			DataType: dataType,
-			Values:   ConvertEnumValues(dataType, utils.Zip(enumInfo.Keys, enumInfo.Values)),
+			Values:   values,
 		})
 	}
+	return nil
 }

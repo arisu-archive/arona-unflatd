@@ -1,6 +1,7 @@
 package conversion
 
 import (
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -32,7 +33,7 @@ func ConvertFieldType(fieldType string) string {
 	return fieldType
 }
 
-func ConvertEnumValues(dataType string, values map[string]string) []fbs.EnumValue {
+func ConvertEnumValues(dataType string, values map[string]string) ([]fbs.EnumValue, error) {
 	// sbyte,byte,short,ushort,int,uint,long,ulong.
 	converted := make([]fbs.EnumValue, 0)
 	switch dataType {
@@ -55,7 +56,7 @@ func ConvertEnumValues(dataType string, values map[string]string) []fbs.EnumValu
 			}
 		}
 	default:
-		panic("unsupported enum type: " + dataType)
+		return nil, fmt.Errorf("unsupported enum type %q", dataType)
 	}
 	// Sort the values by value. As the value is any, we need to convert it to the correct type.
 	// We need to use reflection to get the type of the value.
@@ -69,5 +70,5 @@ func ConvertEnumValues(dataType string, values map[string]string) []fbs.EnumValu
 			return false
 		}
 	})
-	return converted
+	return converted, nil
 }
