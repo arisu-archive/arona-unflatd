@@ -63,6 +63,8 @@ The repository uses manifest mode with:
 The workflow grants Release Please only the repository permissions it needs to
 write contents and manage release pull requests and their labels. Repository
 settings must allow GitHub Actions to create pull requests.
+External actions are pinned to reviewed full commit SHAs, with release-version
+comments retained for dependency-update tooling.
 
 ## Release artifacts
 

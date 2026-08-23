@@ -28,7 +28,7 @@ jobs:
     steps:
       - name: Run Release Please
         id: release
-        uses: googleapis/release-please-action@v4
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
           target-branch: master
 
@@ -41,13 +41,13 @@ jobs:
       contents: write
     steps:
       - name: Checkout release
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.release.outputs.sha }}
           persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           architecture: x64
@@ -64,6 +64,12 @@ jobs:
           mkdir -p "dist/${package}"
           go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" \
             -o "dist/${package}/arona-unflatd" .
+          actual_version=$("dist/${package}/arona-unflatd" --version)
+          expected_version="arona-unflatd version ${VERSION}"
+          if [[ "${actual_version}" != "${expected_version}" ]]; then
+            echo "expected '${expected_version}', got '${actual_version}'" >&2
+            exit 1
+          fi
           cp README.md LICENSE "dist/${package}/"
           tar -C dist -czf "dist/${package}.tar.gz" "${package}"
           cd dist
@@ -90,13 +96,13 @@ jobs:
       contents: write
     steps:
       - name: Checkout release
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.release.outputs.sha }}
           persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           architecture: x64
@@ -119,6 +125,13 @@ jobs:
           New-Item -ItemType Directory -Force -Path $packagePath | Out-Null
           go build -trimpath -ldflags "-s -w -X main.version=$env:VERSION" -o $binaryPath .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $actualVersion = & $binaryPath --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $expectedVersion = "arona-unflatd version $env:VERSION"
+          if ($actualVersion -ne $expectedVersion) {
+            throw "expected '$expectedVersion', got '$actualVersion'"
+          }
 
           Copy-Item README.md, LICENSE -Destination $packagePath
           Compress-Archive -Path $packagePath -DestinationPath $archivePath
