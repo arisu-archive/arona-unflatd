@@ -2,6 +2,9 @@
 MAIN_PACKAGE_PATH := ./main.go
 TMP_DIR := ./tmp
 BINARY_NAME := arona-unflatd
+GOLANGCI_LINT_VERSION := v2.12.2
+GINKGO_VERSION := v2.28.3
+GOVULNCHECK_VERSION := v1.7.0
 
 # ==================================================================================== #
 # HELPERS
@@ -10,9 +13,9 @@ BINARY_NAME := arona-unflatd
 .PHONY: prepare
 prepare:
 	mkdir -p ${TMP_DIR}/bin
-	go env -w CGO_ENABLED=1
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.1
-	go install github.com/onsi/ginkgo/v2/ginkgo@v2.22.2
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${GOLANGCI_LINT_VERSION}
+	go install github.com/onsi/ginkgo/v2/ginkgo@${GINKGO_VERSION}
+	go install golang.org/x/vuln/cmd/govulncheck@${GOVULNCHECK_VERSION}
 
 ## help: print this help message
 .PHONY: help
@@ -40,27 +43,26 @@ tidy:
 
 ## audit: run quality control checks
 .PHONY: audit
+audit: export CGO_ENABLED = 1
 audit:
 	go mod verify
 	go vet ./...
-	go run github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.1 run ./...
-	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${GOLANGCI_LINT_VERSION} run ./...
+	go run golang.org/x/vuln/cmd/govulncheck@${GOVULNCHECK_VERSION} ./...
 
 # ==================================================================================== #
 # DEVELOPMENT
 # ==================================================================================== #
 
-.PHONY: mocks
-mocks:
-	@mockery
-
 ## test: run unit tests
 .PHONY: test
+test: export CGO_ENABLED = 1
 test:
 	ginkgo -r -cover -coverprofile=coverage.out
 
 ## build: build the application
 .PHONY: build
+build: export CGO_ENABLED = 1
 build:
 	go build -o=${TMP_DIR}/bin/${BINARY_NAME} ${MAIN_PACKAGE_PATH}
 
@@ -80,5 +82,6 @@ push: tidy audit no-dirty
 
 ## production/deploy: deploy the application to production
 .PHONY: production/build
+production/build: export CGO_ENABLED = 1
 production/build:
 	GOOS=linux GOARCH=amd64 go build -ldflags='-s -w' -o=${TMP_DIR}/bin/linux_amd64/${BINARY_NAME} ${MAIN_PACKAGE_PATH}
